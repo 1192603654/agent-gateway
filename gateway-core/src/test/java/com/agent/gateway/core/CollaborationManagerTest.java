@@ -17,30 +17,9 @@ class CollaborationManagerTest {
     void testCollaborate() {
         ChatLanguageModel mockModel = Mockito.mock(ChatLanguageModel.class);
 
-        // Custom inner class to match the simple name logic
-        AgentExecutor mockAgent = new AgentExecutor() {
-            @Override
-            public String execute(String input, java.util.Map<String, Object> parameters) {
-                return "Mock result";
-            }
-
-            @Override
-            public String getAgentType() {
-                return "mock";
-            }
-
-            @Override
-            public String toString() {
-                return "MockAgent";
-            }
-        };
-
-        when(mockModel.generate(anyString()))
-                .thenReturn("AgentExecutor") // The anonymous class's simple name might be empty, but let's try to match Orchestrator's logic
-                .thenReturn("FINISH");
-
         // Actually, let's use a named class for the test
         class MockAgent implements AgentExecutor {
+            public String getName() { return "MockAgent"; }
             public String execute(String input, java.util.Map<String, Object> parameters) { return "Mock result"; }
             public String getAgentType() { return "mock"; }
         }

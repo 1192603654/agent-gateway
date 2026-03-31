@@ -42,7 +42,7 @@ public class CollaborationManager {
         StringBuilder prompt = new StringBuilder("Based on the conversation history, select the next agent to call or 'FINISH' if the user intent is fulfilled.\n");
         prompt.append("Available agents:\n");
         for (AgentExecutor agent : agents) {
-            prompt.append("- ").append(agent.getClass().getSimpleName()).append("\n");
+            prompt.append("- ").append(agent.getName()).append("\n");
         }
         prompt.append("\nExecuted so far: ").append(executed);
         prompt.append("\nConversation History:\n").append(history);
@@ -53,7 +53,7 @@ public class CollaborationManager {
 
     private AgentExecutor findExecutor(String name) {
         return agents.stream()
-                .filter(a -> a.getClass().getSimpleName().equalsIgnoreCase(name))
+                .filter(a -> a.getName().equalsIgnoreCase(name))
                 .findFirst()
                 .orElse(null);
     }

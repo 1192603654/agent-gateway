@@ -2,11 +2,12 @@ package com.agent.gateway.server.service;
 
 import com.agent.gateway.core.AgentExecutor;
 import com.agent.gateway.core.AgentFactory;
-import com.agent.gateway.core.OrchestratorService;
+import com.agent.gateway.core.CollaborationManager;
 import com.agent.gateway.server.entity.AgentConfig;
 import com.agent.gateway.server.repository.AgentConfigRepository;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -22,19 +23,24 @@ public class GatewayService {
     @Value("${gateway.llm.apiKey:demo}")
     private String llmApiKey;
 
+    private ChatLanguageModel model;
+
+    @PostConstruct
+    public void init() {
+        this.model = OpenAiChatModel.withApiKey(llmApiKey);
+    }
+
     public String process(String query) {
         List<AgentConfig> configs = repository.findAll();
         List<AgentExecutor> executors = configs.stream()
-                .map(c -> AgentFactory.create(c.getType(), c.getEndpoint(), c.getApiKey()))
+                .map(c -> AgentFactory.create(c.getName(), c.getType(), c.getEndpoint(), c.getApiKey()))
                 .collect(Collectors.toList());
 
-        ChatLanguageModel model = OpenAiChatModel.withApiKey(llmApiKey);
-
-        OrchestratorService orchestrator = OrchestratorService.builder()
-                .model(model)
+        CollaborationManager collaborationManager = CollaborationManager.builder()
+                .orchestratorModel(model)
                 .agents(executors)
                 .build();
 
-        return orchestrator.process(query);
+        return collaborationManager.collaborate(query);
     }
 }
