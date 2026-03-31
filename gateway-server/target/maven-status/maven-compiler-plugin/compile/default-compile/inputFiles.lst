@@ -1,7 +1,0 @@
-/app/gateway-server/src/main/java/com/agent/gateway/server/GatewayApplication.java
-/app/gateway-server/src/main/java/com/agent/gateway/server/controller/AgentController.java
-/app/gateway-server/src/main/java/com/agent/gateway/server/controller/GatewayController.java
-/app/gateway-server/src/main/java/com/agent/gateway/server/controller/QueryRequest.java
-/app/gateway-server/src/main/java/com/agent/gateway/server/entity/AgentConfig.java
-/app/gateway-server/src/main/java/com/agent/gateway/server/repository/AgentConfigRepository.java
-/app/gateway-server/src/main/java/com/agent/gateway/server/service/GatewayService.java
