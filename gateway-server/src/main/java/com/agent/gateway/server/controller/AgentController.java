@@ -1,0 +1,32 @@
+package com.agent.gateway.server.controller;
+
+import com.agent.gateway.server.entity.AgentConfig;
+import com.agent.gateway.server.repository.AgentConfigRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/agents")
+@RequiredArgsConstructor
+public class AgentController {
+    private final AgentConfigRepository repository;
+
+    @GetMapping
+    public List<AgentConfig> list() {
+        return repository.findAll();
+    }
+
+    @PostMapping
+    public AgentConfig create(@RequestBody AgentConfig config) {
+        return repository.save(config);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        repository.deleteById(id);
+        return ResponseEntity.ok().build();
+    }
+}

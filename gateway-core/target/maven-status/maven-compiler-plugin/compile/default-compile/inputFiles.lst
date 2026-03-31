@@ -1,0 +1,6 @@
+/app/gateway-core/src/main/java/com/agent/gateway/core/AgentExecutor.java
+/app/gateway-core/src/main/java/com/agent/gateway/core/AgentFactory.java
+/app/gateway-core/src/main/java/com/agent/gateway/core/CollaborationManager.java
+/app/gateway-core/src/main/java/com/agent/gateway/core/DifyAgentExecutor.java
+/app/gateway-core/src/main/java/com/agent/gateway/core/DifyClient.java
+/app/gateway-core/src/main/java/com/agent/gateway/core/OrchestratorService.java
