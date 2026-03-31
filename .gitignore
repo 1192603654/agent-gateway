@@ -1,0 +1,33 @@
+target/
+*.class
+*.log
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# IntelliJ IDEA
+.idea/
+*.iml
+out/
+gen/
+
+# Eclipse
+.settings/
+.project
+.classpath
+.factorypath
+
+# VS Code
+.vscode/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Maven
+dependency-reduced-pom.xml
+node_modules/
+dist/
