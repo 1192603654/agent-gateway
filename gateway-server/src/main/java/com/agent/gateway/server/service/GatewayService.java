@@ -32,7 +32,6 @@ public class GatewayService {
         }
 
         String provider = config.getProvider() != null ? config.getProvider().toLowerCase() : "openai";
-        String modelName = config.getModelName() != null ? config.getModelName() : "gpt-4";
 
         switch (provider) {
             case "zhipu":
@@ -42,14 +41,14 @@ public class GatewayService {
             case "dashscope":
                 return QwenChatModel.builder()
                         .apiKey(config.getApiKey())
-                        .modelName(modelName)
+                        .modelName(config.getModelName() != null && !config.getModelName().isEmpty() ? config.getModelName() : "qwen-turbo")
                         .build();
             case "openai":
             default:
                 return OpenAiChatModel.builder()
                         .apiKey(config.getApiKey())
-                        .baseUrl(config.getBaseUrl())
-                        .modelName(modelName)
+                        .baseUrl(config.getBaseUrl() != null && !config.getBaseUrl().isEmpty() ? config.getBaseUrl() : "https://api.openai.com/v1")
+                        .modelName(config.getModelName() != null && !config.getModelName().isEmpty() ? config.getModelName() : "gpt-4")
                         .build();
         }
     }

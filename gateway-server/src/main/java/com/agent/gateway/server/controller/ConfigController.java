@@ -18,6 +18,10 @@ public class ConfigController {
 
     @PostMapping("/orchestrator")
     public SystemConfig saveOrchestratorConfig(@RequestBody SystemConfig config) {
+        SystemConfig existing = repository.findById("ORCHESTRATOR_MODEL").orElse(null);
+        if (existing != null && (config.getApiKey() == null || config.getApiKey().isEmpty())) {
+            config.setApiKey(existing.getApiKey());
+        }
         config.setConfigKey("ORCHESTRATOR_MODEL");
         return repository.save(config);
     }
