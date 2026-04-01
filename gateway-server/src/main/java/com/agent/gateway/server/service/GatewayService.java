@@ -9,7 +9,9 @@ import com.agent.gateway.server.entity.SystemConfig;
 import com.agent.gateway.server.repository.AgentConfigRepository;
 import com.agent.gateway.server.repository.SystemConfigRepository;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.dashscope.QwenChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.zhipu.ZhipuAiChatModel;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -29,11 +31,27 @@ public class GatewayService {
             return OpenAiChatModel.withApiKey("demo");
         }
 
-        return OpenAiChatModel.builder()
-                .apiKey(config.getApiKey())
-                .baseUrl(config.getBaseUrl())
-                .modelName(config.getModelName() != null ? config.getModelName() : "gpt-4")
-                .build();
+        String provider = config.getProvider() != null ? config.getProvider().toLowerCase() : "openai";
+        String modelName = config.getModelName() != null ? config.getModelName() : "gpt-4";
+
+        switch (provider) {
+            case "zhipu":
+                return ZhipuAiChatModel.builder()
+                        .apiKey(config.getApiKey())
+                        .build();
+            case "dashscope":
+                return QwenChatModel.builder()
+                        .apiKey(config.getApiKey())
+                        .modelName(modelName)
+                        .build();
+            case "openai":
+            default:
+                return OpenAiChatModel.builder()
+                        .apiKey(config.getApiKey())
+                        .baseUrl(config.getBaseUrl())
+                        .modelName(modelName)
+                        .build();
+        }
     }
 
     public void processStream(String query, CollaborationListener listener) {
