@@ -27,7 +27,11 @@ public class DifyAgentExecutor implements AgentExecutor {
                 .endpoint(endpoint)
                 .build();
 
-        return client.chat(input, "gateway-user", parameters);
+        String user = (String) parameters.getOrDefault("user", "gateway-user");
+        String conversationId = (String) parameters.get("conversation_id");
+        Map<String, Object> inputs = (Map<String, Object>) parameters.getOrDefault("inputs", parameters);
+
+        return client.chat(input, user, inputs, conversationId);
     }
 
     @Override

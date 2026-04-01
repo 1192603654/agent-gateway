@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -53,7 +54,7 @@ public class GatewayService {
         }
     }
 
-    public void processStream(String query, CollaborationListener listener) {
+    public void processStream(String query, Map<String, Object> params, CollaborationListener listener) {
         ChatLanguageModel model = getModel();
         List<AgentConfig> configs = repository.findAll();
         List<AgentExecutor> executors = configs.stream()
@@ -65,7 +66,7 @@ public class GatewayService {
                 .agents(executors)
                 .build();
 
-        collaborationManager.collaborate(query, listener);
+        collaborationManager.collaborate(query, params, listener);
     }
 
     public String process(String query) {

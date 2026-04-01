@@ -30,12 +30,12 @@ public class GatewayController {
 
     @Operation(summary = "提交意图请求 (SSE 流式)", description = "第三方系统通过此接口提交用户意图，网关将以服务器发送事件 (SSE) 的形式实时返回执行进度和最终结果。")
     @PostMapping(value = "/query", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter query(@RequestBody Map<String, String> request) {
-        String query = request.get("query");
+    public SseEmitter query(@RequestBody Map<String, Object> request) {
+        String query = (String) request.get("query");
         SseEmitter emitter = new SseEmitter(180_000L); // 3 minutes timeout
 
         executor.execute(() -> {
-            gatewayService.processStream(query, new CollaborationListener() {
+            gatewayService.processStream(query, request, new CollaborationListener() {
                 @Override
                 public void onStepStart(String agentName, int step) {
                     sendEvent(emitter, "step_start", Map.of("agent", agentName, "step", step));

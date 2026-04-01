@@ -14,7 +14,7 @@ public class CollaborationManager {
     private final ChatLanguageModel orchestratorModel;
     private final List<AgentExecutor> agents;
 
-    public void collaborate(String userInput, CollaborationListener listener) {
+    public void collaborate(String userInput, Map<String, Object> params, CollaborationListener listener) {
         StringBuilder conversationHistory = new StringBuilder("User: ").append(userInput).append("\n");
         String currentResult = "";
         List<String> executedAgents = new ArrayList<>();
@@ -32,7 +32,10 @@ public class CollaborationManager {
                 log.info("Collaborating step {}: calling agent {}", i + 1, nextAction);
                 if (listener != null) listener.onStepStart(nextAction, i + 1);
 
-                String result = executor.execute(userInput, Map.of("history", conversationHistory.toString()));
+                Map<String, Object> execParams = new java.util.HashMap<>(params != null ? params : Map.of());
+                execParams.put("history", conversationHistory.toString());
+
+                String result = executor.execute(userInput, execParams);
                 conversationHistory.append("Agent (").append(nextAction).append("): ").append(result).append("\n");
                 currentResult = result;
                 executedAgents.add(nextAction);
@@ -46,6 +49,10 @@ public class CollaborationManager {
             log.error("Collaboration failed", e);
             if (listener != null) listener.onError(e.getMessage());
         }
+    }
+
+    public void collaborate(String userInput, CollaborationListener listener) {
+        collaborate(userInput, Map.of(), listener);
     }
 
     public String collaborate(String userInput) {

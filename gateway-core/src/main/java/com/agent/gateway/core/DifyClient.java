@@ -19,13 +19,19 @@ public class DifyClient {
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
     public String chat(String query, String user, Map<String, Object> inputs) {
+        return chat(query, user, inputs, null);
+    }
+
+    public String chat(String query, String user, Map<String, Object> inputs, String conversationId) {
         try {
-            Map<String, Object> body = Map.of(
-                    "inputs", inputs,
-                    "query", query,
-                    "user", user,
-                    "response_mode", "blocking"
-            );
+            java.util.HashMap<String, Object> body = new java.util.HashMap<>();
+            body.put("inputs", inputs != null ? inputs : Map.of());
+            body.put("query", query);
+            body.put("user", user);
+            body.put("response_mode", "blocking");
+            if (conversationId != null && !conversationId.isEmpty()) {
+                body.put("conversation_id", conversationId);
+            }
 
             String jsonBody = objectMapper.writeValueAsString(body);
 
