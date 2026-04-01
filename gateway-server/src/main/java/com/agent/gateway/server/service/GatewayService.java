@@ -27,30 +27,42 @@ public class GatewayService {
 
     private ChatLanguageModel getModel() {
         SystemConfig config = systemConfigRepository.findById("ORCHESTRATOR_MODEL").orElse(null);
-        if (config == null || config.getApiKey() == null) {
+        if (config == null || config.getApiKey() == null || config.getApiKey().trim().isEmpty()) {
             // Fallback or default
             return OpenAiChatModel.withApiKey("demo");
         }
+
+        String apiKey = config.getApiKey().trim();
+        validateApiKey(apiKey);
 
         String provider = config.getProvider() != null ? config.getProvider().toLowerCase() : "openai";
 
         switch (provider) {
             case "zhipu":
                 return ZhipuAiChatModel.builder()
-                        .apiKey(config.getApiKey())
+                        .apiKey(apiKey)
                         .build();
             case "dashscope":
                 return QwenChatModel.builder()
-                        .apiKey(config.getApiKey())
+                        .apiKey(apiKey)
                         .modelName(config.getModelName() != null && !config.getModelName().isEmpty() ? config.getModelName() : "qwen-turbo")
                         .build();
             case "openai":
             default:
                 return OpenAiChatModel.builder()
-                        .apiKey(config.getApiKey())
+                        .apiKey(apiKey)
                         .baseUrl(config.getBaseUrl() != null && !config.getBaseUrl().isEmpty() ? config.getBaseUrl() : "https://api.openai.com/v1")
                         .modelName(config.getModelName() != null && !config.getModelName().isEmpty() ? config.getModelName() : "gpt-4")
                         .build();
+        }
+    }
+
+    private void validateApiKey(String apiKey) {
+        for (int i = 0; i < apiKey.length(); i++) {
+            char c = apiKey.charAt(i);
+            if (c > 127) {
+                throw new RuntimeException("API Key 包含非法字符 (0x" + Integer.toHexString(c) + ")，请确保密钥不包含中文字符或特殊格式。");
+            }
         }
     }
 
@@ -58,7 +70,10 @@ public class GatewayService {
         ChatLanguageModel model = getModel();
         List<AgentConfig> configs = repository.findAll();
         List<AgentExecutor> executors = configs.stream()
-                .map(c -> AgentFactory.create(c.getName(), c.getType(), c.getEndpoint(), c.getApiKey()))
+                .map(c -> {
+                    String key = c.getApiKey() != null ? c.getApiKey().trim() : "";
+                    return AgentFactory.create(c.getName(), c.getType(), c.getEndpoint(), key);
+                })
                 .collect(Collectors.toList());
 
         CollaborationManager collaborationManager = CollaborationManager.builder()
@@ -73,7 +88,10 @@ public class GatewayService {
         ChatLanguageModel model = getModel();
         List<AgentConfig> configs = repository.findAll();
         List<AgentExecutor> executors = configs.stream()
-                .map(c -> AgentFactory.create(c.getName(), c.getType(), c.getEndpoint(), c.getApiKey()))
+                .map(c -> {
+                    String key = c.getApiKey() != null ? c.getApiKey().trim() : "";
+                    return AgentFactory.create(c.getName(), c.getType(), c.getEndpoint(), key);
+                })
                 .collect(Collectors.toList());
 
         CollaborationManager collaborationManager = CollaborationManager.builder()

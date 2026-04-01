@@ -63,7 +63,8 @@ public class OpenClawAgentExecutor implements AgentExecutor {
             }
 
             JsonNode node = objectMapper.readTree(response.body());
-            return node.has("output") ? node.get("output").asText() : response.body();
+            String res = node.has("output") ? node.get("output").asText() : response.body();
+            if (chunkConsumer != null) chunkConsumer.accept(res);
 
         } catch (Exception e) {
             log.error("Failed to call OpenClaw API", e);

@@ -2,12 +2,14 @@ package com.agent.gateway.server.controller;
 
 import com.agent.gateway.core.CollaborationListener;
 import com.agent.gateway.server.service.GatewayService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,8 +26,10 @@ import java.util.concurrent.Executors;
 @RestController
 @RequestMapping("/api/gateway")
 @RequiredArgsConstructor
+@Slf4j
 public class GatewayController {
     private final GatewayService gatewayService;
+    private final ObjectMapper objectMapper;
     private final ExecutorService executor = Executors.newCachedThreadPool();
 
     @Operation(summary = "提交意图请求 (SSE 流式)", description = "第三方系统通过此接口提交用户意图，网关将以服务器发送事件 (SSE) 的形式实时返回执行进度和最终结果。")
@@ -35,34 +39,41 @@ public class GatewayController {
         SseEmitter emitter = new SseEmitter(180_000L); // 3 minutes timeout
 
         executor.execute(() -> {
-            gatewayService.processStream(query, request, new CollaborationListener() {
-                @Override
-                public void onStepStart(String agentName, int step) {
-                    sendEvent(emitter, "step_start", Map.of("agent", agentName, "step", step));
-                }
+            try {
+                gatewayService.processStream(query, request, new CollaborationListener() {
+                    @Override
+                    public void onStepStart(String agentName, int step) {
+                        sendEvent(emitter, "step_start", Map.of("agent", agentName, "step", step));
+                    }
 
-                @Override
-                public void onStepChunk(String agentName, String chunk) {
-                    sendEvent(emitter, "step_chunk", Map.of("agent", agentName, "chunk", chunk));
-                }
+                    @Override
+                    public void onStepChunk(String agentName, String chunk) {
+                        sendEvent(emitter, "step_chunk", Map.of("agent", agentName, "chunk", chunk));
+                    }
 
-                @Override
-                public void onStepComplete(String agentName, String result) {
-                    sendEvent(emitter, "step_complete", Map.of("agent", agentName, "result", result));
-                }
+                    @Override
+                    public void onStepComplete(String agentName, String result) {
+                        sendEvent(emitter, "step_complete", Map.of("agent", agentName, "result", result));
+                    }
 
-                @Override
-                public void onComplete(String finalResult) {
-                    sendEvent(emitter, "final_result", Map.of("result", finalResult));
-                    emitter.complete();
-                }
+                    @Override
+                    public void onComplete(String finalResult) {
+                        sendEvent(emitter, "final_result", Map.of("result", finalResult));
+                        emitter.complete();
+                    }
 
-                @Override
-                public void onError(String message) {
-                    sendEvent(emitter, "error", Map.of("message", message));
-                    emitter.completeWithError(new RuntimeException(message));
-                }
-            });
+                    @Override
+                    public void onError(String message) {
+                        sendEvent(emitter, "error", Map.of("message", message));
+                        // Don't call completeWithError here as the stream might already be partially committed
+                        emitter.complete();
+                    }
+                });
+            } catch (Exception e) {
+                log.error("Stream processing error", e);
+                sendEvent(emitter, "error", Map.of("message", e.getMessage()));
+                emitter.complete();
+            }
         });
 
         return emitter;
@@ -70,9 +81,11 @@ public class GatewayController {
 
     private void sendEvent(SseEmitter emitter, String name, Object data) {
         try {
-            emitter.send(SseEmitter.event().name(name).data(data));
-        } catch (IOException e) {
-            // Client probably disconnected
+            // Explicitly serialize to JSON string to avoid HttpMessageNotWritableException
+            String json = objectMapper.writeValueAsString(data);
+            emitter.send(SseEmitter.event().name(name).data(json));
+        } catch (Exception e) {
+            log.warn("Failed to send SSE event: {}", name);
         }
     }
 }
