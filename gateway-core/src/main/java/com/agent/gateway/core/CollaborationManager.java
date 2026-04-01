@@ -14,28 +14,49 @@ public class CollaborationManager {
     private final ChatLanguageModel orchestratorModel;
     private final List<AgentExecutor> agents;
 
-    public String collaborate(String userInput) {
+    public void collaborate(String userInput, CollaborationListener listener) {
         StringBuilder conversationHistory = new StringBuilder("User: ").append(userInput).append("\n");
         String currentResult = "";
         List<String> executedAgents = new ArrayList<>();
 
-        for (int i = 0; i < 3; i++) { // Max 3 steps for simplicity
-            String nextAction = selectNextAction(conversationHistory.toString(), executedAgents);
-            if (nextAction.equals("FINISH") || nextAction.equals("NONE")) {
-                break;
+        try {
+            for (int i = 0; i < 3; i++) { // Max 3 steps for simplicity
+                String nextAction = selectNextAction(conversationHistory.toString(), executedAgents);
+                if (nextAction.equals("FINISH") || nextAction.equals("NONE")) {
+                    break;
+                }
+
+                AgentExecutor executor = findExecutor(nextAction);
+                if (executor == null) break;
+
+                log.info("Collaborating step {}: calling agent {}", i + 1, nextAction);
+                if (listener != null) listener.onStepStart(nextAction, i + 1);
+
+                String result = executor.execute(userInput, Map.of("history", conversationHistory.toString()));
+                conversationHistory.append("Agent (").append(nextAction).append("): ").append(result).append("\n");
+                currentResult = result;
+                executedAgents.add(nextAction);
+
+                if (listener != null) listener.onStepComplete(nextAction, result);
             }
 
-            AgentExecutor executor = findExecutor(nextAction);
-            if (executor == null) break;
-
-            log.info("Collaborating step {}: calling agent {}", i + 1, nextAction);
-            String result = executor.execute(userInput, Map.of("history", conversationHistory.toString()));
-            conversationHistory.append("Agent (").append(nextAction).append("): ").append(result).append("\n");
-            currentResult = result;
-            executedAgents.add(nextAction);
+            String finalRes = currentResult.isEmpty() ? "No agent could handle the request." : currentResult;
+            if (listener != null) listener.onComplete(finalRes);
+        } catch (Exception e) {
+            log.error("Collaboration failed", e);
+            if (listener != null) listener.onError(e.getMessage());
         }
+    }
 
-        return currentResult.isEmpty() ? "No agent could handle the request." : currentResult;
+    public String collaborate(String userInput) {
+        final String[] finalResult = new String[1];
+        collaborate(userInput, new CollaborationListener() {
+            @Override public void onStepStart(String agentName, int step) {}
+            @Override public void onStepComplete(String agentName, String result) {}
+            @Override public void onComplete(String res) { finalResult[0] = res; }
+            @Override public void onError(String msg) { finalResult[0] = "Error: " + msg; }
+        });
+        return finalResult[0];
     }
 
     private String selectNextAction(String history, List<String> executed) {

@@ -2,6 +2,7 @@ package com.agent.gateway.server.service;
 
 import com.agent.gateway.core.AgentExecutor;
 import com.agent.gateway.core.AgentFactory;
+import com.agent.gateway.core.CollaborationListener;
 import com.agent.gateway.core.CollaborationManager;
 import com.agent.gateway.server.entity.AgentConfig;
 import com.agent.gateway.server.repository.AgentConfigRepository;
@@ -28,6 +29,20 @@ public class GatewayService {
     @PostConstruct
     public void init() {
         this.model = OpenAiChatModel.withApiKey(llmApiKey);
+    }
+
+    public void processStream(String query, CollaborationListener listener) {
+        List<AgentConfig> configs = repository.findAll();
+        List<AgentExecutor> executors = configs.stream()
+                .map(c -> AgentFactory.create(c.getName(), c.getType(), c.getEndpoint(), c.getApiKey()))
+                .collect(Collectors.toList());
+
+        CollaborationManager collaborationManager = CollaborationManager.builder()
+                .orchestratorModel(model)
+                .agents(executors)
+                .build();
+
+        collaborationManager.collaborate(query, listener);
     }
 
     public String process(String query) {

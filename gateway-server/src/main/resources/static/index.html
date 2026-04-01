@@ -183,16 +183,49 @@
             sendBtn.disabled = true;
             sendBtn.innerHTML = '<span>执行中...</span>';
             resultBox.classList.remove('hidden');
-            resultContent.innerText = "处理中，请稍候...";
+            resultContent.innerHTML = '';
 
             try {
-                const res = await fetch('/api/gateway/query', {
+                const response = await fetch('/api/gateway/query', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ query: query })
                 });
-                const data = await res.json();
-                resultContent.innerText = data.result || "未返回结果";
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+
+                    lines.forEach(line => {
+                        if (line.startsWith('event:')) {
+                            const eventType = line.substring(6).trim();
+                            // Next line should be data:
+                        } else if (line.startsWith('data:')) {
+                            const data = JSON.parse(line.substring(5).trim());
+                            const div = document.createElement('div');
+                            div.className = 'mb-2 p-2 bg-white rounded border border-gray-100';
+
+                            if (chunk.includes('event:step_start')) {
+                                div.innerHTML = `<span class="text-blue-500 font-bold">[开始执行]</span> 智能体: ${data.agent} (步骤 ${data.step})`;
+                            } else if (chunk.includes('event:step_complete')) {
+                                div.innerHTML = `<span class="text-green-500 font-bold">[执行完毕]</span> 智能体: ${data.agent}<br/><span class="text-xs text-gray-400">${data.result}</span>`;
+                            } else if (chunk.includes('event:final_result')) {
+                                div.innerHTML = `<span class="text-slate-800 font-bold">[最终回答]</span><br/>${data.result}`;
+                                div.className = 'mb-2 p-3 bg-blue-50 rounded-xl border border-blue-100 text-slate-800 font-medium';
+                            } else if (chunk.includes('event:error')) {
+                                div.innerHTML = `<span class="text-red-500 font-bold">[错误]</span> ${data.message}`;
+                            }
+
+                            if (div.innerHTML) resultContent.appendChild(div);
+                        }
+                    });
+                }
             } catch (e) {
                 resultContent.innerText = "请求发生错误: " + e.message;
             } finally {
