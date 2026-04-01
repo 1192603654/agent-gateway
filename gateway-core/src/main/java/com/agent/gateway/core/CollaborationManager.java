@@ -20,10 +20,22 @@ public class CollaborationManager {
         List<String> executedAgents = new ArrayList<>();
 
         try {
-            for (int i = 0; i < 3; i++) { // Max 3 steps for simplicity
+            for (int i = 0; i < 5; i++) { // Max 5 steps for complex collaboration
                 String nextAction = selectNextAction(conversationHistory.toString(), executedAgents);
                 if (nextAction.equals("FINISH") || nextAction.equals("NONE")) {
                     break;
+                }
+
+                if (nextAction.equals("DIRECT_ANSWER")) {
+                    if (listener != null) listener.onStepStart("Orchestrator", i + 1);
+                    String response = generateDirectResponse(userInput, conversationHistory.toString());
+                    if (listener != null) {
+                        listener.onStepChunk("Orchestrator", response);
+                        listener.onStepComplete("Orchestrator", response);
+                    }
+                    currentResult = response;
+                    conversationHistory.append("Orchestrator: ").append(response).append("\n");
+                    break; // Direct answer usually finishes the task
                 }
 
                 AgentExecutor executor = findExecutor(nextAction);
@@ -75,16 +87,46 @@ public class CollaborationManager {
     }
 
     private String selectNextAction(String history, List<String> executed) {
-        StringBuilder prompt = new StringBuilder("Based on the conversation history, select the next agent to call or 'FINISH' if the user intent is fulfilled.\n");
+        StringBuilder prompt = new StringBuilder("You are the Central Orchestrator of the Sub-Agent Gateway.\n");
+        prompt.append("System Info: This is an embedded multi-agent gateway developed in Java, supporting Dify/OpenClaw agents.\n");
+        prompt.append("Your Role: Coordinate between agents or answer directly if it's about system identity, architecture, or listing agents.\n\n");
+
         prompt.append("Available agents:\n");
         for (AgentExecutor agent : agents) {
-            prompt.append("- ").append(agent.getName()).append("\n");
+            prompt.append("- ").append(agent.getName()).append(" (Type: ").append(agent.getAgentType()).append(")\n");
         }
+
+        prompt.append("\nInstructions:\n");
+        prompt.append("1. If you can answer the user's question directly (e.g., identity, system architecture, listing agents), respond with 'DIRECT_ANSWER'.\n");
+        prompt.append("2. If an agent is needed, respond with ONLY the agent name.\n");
+        prompt.append("3. If the user intent is fulfilled, respond with 'FINISH'.\n");
+
         prompt.append("\nExecuted so far: ").append(executed);
         prompt.append("\nConversation History:\n").append(history);
-        prompt.append("\nRespond ONLY with the agent name or 'FINISH'.");
+        prompt.append("\nNext Action (Respond ONLY with Agent Name, 'DIRECT_ANSWER', or 'FINISH'):");
 
         return orchestratorModel.generate(prompt.toString()).trim();
+    }
+
+    private String generateDirectResponse(String userInput, String history) {
+        StringBuilder prompt = new StringBuilder("You are the Central Orchestrator of the Sub-Agent Gateway.\n");
+        prompt.append("System Info: Java-based Embedded Gateway, Sub-Agent mode, supports Dify/OpenClaw agents.\n");
+        prompt.append("Architecture: Java 21, Spring Boot, LangChain4j for orchestration, JPA/H2 for persistence.\n\n");
+
+        prompt.append("Currently configured agents:\n");
+        if (agents.isEmpty()) {
+            prompt.append("(None)\n");
+        } else {
+            for (AgentExecutor agent : agents) {
+                prompt.append("- Name: ").append(agent.getName()).append(", Type: ").append(agent.getAgentType()).append("\n");
+            }
+        }
+
+        prompt.append("\nUser query: ").append(userInput);
+        prompt.append("\nConversation history: ").append(history);
+        prompt.append("\n\nPlease provide a helpful and accurate direct answer in Chinese.");
+
+        return orchestratorModel.generate(prompt.toString());
     }
 
     private AgentExecutor findExecutor(String name) {
