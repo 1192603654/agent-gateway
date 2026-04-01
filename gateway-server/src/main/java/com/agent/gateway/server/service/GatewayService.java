@@ -5,12 +5,12 @@ import com.agent.gateway.core.AgentFactory;
 import com.agent.gateway.core.CollaborationListener;
 import com.agent.gateway.core.CollaborationManager;
 import com.agent.gateway.server.entity.AgentConfig;
+import com.agent.gateway.server.entity.SystemConfig;
 import com.agent.gateway.server.repository.AgentConfigRepository;
+import com.agent.gateway.server.repository.SystemConfigRepository;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,18 +20,24 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GatewayService {
     private final AgentConfigRepository repository;
+    private final SystemConfigRepository systemConfigRepository;
 
-    @Value("${gateway.llm.apiKey:demo}")
-    private String llmApiKey;
+    private ChatLanguageModel getModel() {
+        SystemConfig config = systemConfigRepository.findById("ORCHESTRATOR_MODEL").orElse(null);
+        if (config == null || config.getApiKey() == null) {
+            // Fallback or default
+            return OpenAiChatModel.withApiKey("demo");
+        }
 
-    private ChatLanguageModel model;
-
-    @PostConstruct
-    public void init() {
-        this.model = OpenAiChatModel.withApiKey(llmApiKey);
+        return OpenAiChatModel.builder()
+                .apiKey(config.getApiKey())
+                .baseUrl(config.getBaseUrl())
+                .modelName(config.getModelName() != null ? config.getModelName() : "gpt-4")
+                .build();
     }
 
     public void processStream(String query, CollaborationListener listener) {
+        ChatLanguageModel model = getModel();
         List<AgentConfig> configs = repository.findAll();
         List<AgentExecutor> executors = configs.stream()
                 .map(c -> AgentFactory.create(c.getName(), c.getType(), c.getEndpoint(), c.getApiKey()))
@@ -46,6 +52,7 @@ public class GatewayService {
     }
 
     public String process(String query) {
+        ChatLanguageModel model = getModel();
         List<AgentConfig> configs = repository.findAll();
         List<AgentExecutor> executors = configs.stream()
                 .map(c -> AgentFactory.create(c.getName(), c.getType(), c.getEndpoint(), c.getApiKey()))
