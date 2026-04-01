@@ -23,12 +23,18 @@ public class DifyClient {
     }
 
     public String chat(String query, String user, Map<String, Object> inputs, String conversationId) {
+        final StringBuilder fullAnswer = new StringBuilder();
+        chatStream(query, user, inputs, conversationId, chunk -> fullAnswer.append(chunk));
+        return fullAnswer.toString();
+    }
+
+    public void chatStream(String query, String user, Map<String, Object> inputs, String conversationId, java.util.function.Consumer<String> chunkConsumer) {
         try {
             java.util.HashMap<String, Object> body = new java.util.HashMap<>();
             body.put("inputs", inputs != null ? inputs : Map.of());
             body.put("query", query);
             body.put("user", user);
-            body.put("response_mode", "blocking");
+            body.put("response_mode", "streaming");
             if (conversationId != null && !conversationId.isEmpty()) {
                 body.put("conversation_id", conversationId);
             }
@@ -42,14 +48,24 @@ public class DifyClient {
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<java.io.InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
             if (response.statusCode() != 200) {
-                throw new RuntimeException("Dify API error: " + response.body());
+                throw new RuntimeException("Dify API error code: " + response.statusCode());
             }
 
-            JsonNode node = objectMapper.readTree(response.body());
-            return node.get("answer").asText();
+            try (java.util.Scanner scanner = new java.util.Scanner(response.body(), "UTF-8")) {
+                while (scanner.hasNextLine()) {
+                    String line = scanner.nextLine();
+                    if (line.startsWith("data:")) {
+                        JsonNode node = objectMapper.readTree(line.substring(5).trim());
+                        if (node.has("event") && "message".equals(node.get("event").asText())) {
+                            String answer = node.get("answer").asText();
+                            if (chunkConsumer != null) chunkConsumer.accept(answer);
+                        }
+                    }
+                }
+            }
 
         } catch (Exception e) {
             throw new RuntimeException("Failed to call Dify API", e);

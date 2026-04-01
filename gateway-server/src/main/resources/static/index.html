@@ -254,36 +254,67 @@
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
 
+                let currentEvent = '';
+                let currentData = '';
+                let lastChunkId = '';
+
+                let buffer = '';
                 while (true) {
                     const { value, done } = await reader.read();
                     if (done) break;
 
-                    const chunk = decoder.decode(value);
-                    const lines = chunk.split('\n');
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
 
-                    lines.forEach(line => {
+                    // Keep the last partial line in buffer
+                    buffer = lines.pop();
+
+                    for (let line of lines) {
+                        line = line.trim();
+                        if (!line) continue;
+
                         if (line.startsWith('event:')) {
-                            const eventType = line.substring(6).trim();
-                            // Next line should be data:
+                            currentEvent = line.substring(6).trim();
                         } else if (line.startsWith('data:')) {
-                            const data = JSON.parse(line.substring(5).trim());
-                            const div = document.createElement('div');
-                            div.className = 'mb-2 p-2 bg-white rounded border border-gray-100';
+                            currentData = line.substring(5).trim();
 
-                            if (chunk.includes('event:step_start')) {
-                                div.innerHTML = `<span class="text-blue-500 font-bold">[开始执行]</span> 智能体: ${data.agent} (步骤 ${data.step})`;
-                            } else if (chunk.includes('event:step_complete')) {
-                                div.innerHTML = `<span class="text-green-500 font-bold">[执行完毕]</span> 智能体: ${data.agent}<br/><span class="text-xs text-gray-400">${data.result}</span>`;
-                            } else if (chunk.includes('event:final_result')) {
-                                div.innerHTML = `<span class="text-slate-800 font-bold">[最终回答]</span><br/>${data.result}`;
-                                div.className = 'mb-2 p-3 bg-blue-50 rounded-xl border border-blue-100 text-slate-800 font-medium';
-                            } else if (chunk.includes('event:error')) {
-                                div.innerHTML = `<span class="text-red-500 font-bold">[错误]</span> ${data.message}`;
+                            try {
+                                const data = JSON.parse(currentData);
+
+                                if (currentEvent === 'step_start') {
+                                    const div = document.createElement('div');
+                                    div.id = `agent-box-${data.agent}`;
+                                    div.className = 'mb-2 p-2 bg-white rounded border border-gray-100 transition-colors';
+                                    div.innerHTML = `<span class="text-blue-500 font-bold">[开始执行]</span> 智能体: ${data.agent} (步骤 ${data.step})<div class="mt-1 text-slate-600 italic chunk-area"></div>`;
+                                    resultContent.appendChild(div);
+                                } else if (currentEvent === 'step_chunk') {
+                                    const parent = document.getElementById(`agent-box-${data.agent}`);
+                                    if (parent) {
+                                        const area = parent.querySelector('.chunk-area');
+                                        area.innerText += data.chunk;
+                                    }
+                                } else if (currentEvent === 'step_complete') {
+                                    const parent = document.getElementById(`agent-box-${data.agent}`);
+                                    if (parent) {
+                                        parent.classList.add('bg-green-50');
+                                        parent.querySelector('.chunk-area').classList.remove('italic');
+                                    }
+                                } else if (currentEvent === 'final_result') {
+                                    const div = document.createElement('div');
+                                    div.className = 'mt-4 mb-2 p-4 bg-blue-50 rounded-xl border border-blue-100 text-slate-800 font-medium shadow-sm';
+                                    div.innerHTML = `<div class="text-xs text-blue-400 font-bold uppercase mb-1">网关最终回答</div>${data.result}`;
+                                    resultContent.appendChild(div);
+                                } else if (currentEvent === 'error') {
+                                    const div = document.createElement('div');
+                                    div.className = 'mb-2 p-2 bg-red-50 text-red-700 rounded border border-red-100';
+                                    div.innerHTML = `<span class="text-red-500 font-bold">[错误]</span> ${data.message}`;
+                                    resultContent.appendChild(div);
+                                }
+                            } catch (e) {
+                                console.error("Parse error for data:", currentData, e);
                             }
-
-                            if (div.innerHTML) resultContent.appendChild(div);
                         }
-                    });
+                    }
                 }
             } catch (e) {
                 resultContent.innerText = "请求发生错误: " + e.message;

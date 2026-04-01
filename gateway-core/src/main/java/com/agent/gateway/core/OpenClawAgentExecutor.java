@@ -27,6 +27,13 @@ public class OpenClawAgentExecutor implements AgentExecutor {
 
     @Override
     public String execute(String input, Map<String, Object> parameters) {
+        final StringBuilder sb = new StringBuilder();
+        executeStream(input, parameters, chunk -> sb.append(chunk));
+        return sb.toString();
+    }
+
+    @Override
+    public void executeStream(String input, Map<String, Object> parameters, java.util.function.Consumer<String> chunkConsumer) {
         log.info("Executing OpenClaw agent: {} with input: {}", name, input);
 
         try {

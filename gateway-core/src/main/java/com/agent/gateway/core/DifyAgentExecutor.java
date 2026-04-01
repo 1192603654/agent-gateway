@@ -22,6 +22,13 @@ public class DifyAgentExecutor implements AgentExecutor {
 
     @Override
     public String execute(String input, Map<String, Object> parameters) {
+        final StringBuilder sb = new StringBuilder();
+        executeStream(input, parameters, chunk -> sb.append(chunk));
+        return sb.toString();
+    }
+
+    @Override
+    public void executeStream(String input, Map<String, Object> parameters, java.util.function.Consumer<String> chunkConsumer) {
         DifyClient client = DifyClient.builder()
                 .apiKey(apiKey)
                 .endpoint(endpoint)
@@ -31,7 +38,7 @@ public class DifyAgentExecutor implements AgentExecutor {
         String conversationId = (String) parameters.get("conversation_id");
         Map<String, Object> inputs = (Map<String, Object>) parameters.getOrDefault("inputs", parameters);
 
-        return client.chat(input, user, inputs, conversationId);
+        client.chatStream(input, user, inputs, conversationId, chunkConsumer);
     }
 
     @Override

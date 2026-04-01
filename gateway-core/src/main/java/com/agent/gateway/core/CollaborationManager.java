@@ -35,7 +35,14 @@ public class CollaborationManager {
                 Map<String, Object> execParams = new java.util.HashMap<>(params != null ? params : Map.of());
                 execParams.put("history", conversationHistory.toString());
 
-                String result = executor.execute(userInput, execParams);
+                StringBuilder stepResult = new StringBuilder();
+                String finalNextAction = nextAction;
+                executor.executeStream(userInput, execParams, chunk -> {
+                    stepResult.append(chunk);
+                    if (listener != null) listener.onStepChunk(finalNextAction, chunk);
+                });
+
+                String result = stepResult.toString();
                 conversationHistory.append("Agent (").append(nextAction).append("): ").append(result).append("\n");
                 currentResult = result;
                 executedAgents.add(nextAction);
@@ -59,6 +66,7 @@ public class CollaborationManager {
         final String[] finalResult = new String[1];
         collaborate(userInput, new CollaborationListener() {
             @Override public void onStepStart(String agentName, int step) {}
+            @Override public void onStepChunk(String agentName, String chunk) {}
             @Override public void onStepComplete(String agentName, String result) {}
             @Override public void onComplete(String res) { finalResult[0] = res; }
             @Override public void onError(String msg) { finalResult[0] = "Error: " + msg; }
