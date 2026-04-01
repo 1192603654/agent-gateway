@@ -15,5 +15,7 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /app/gateway-server/target/gateway-server-1.0-SNAPSHOT.jar app.jar
 
+RUN mkdir -p /app/data
+VOLUME /app/data
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

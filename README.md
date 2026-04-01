@@ -16,9 +16,9 @@
 # 构建镜像
 docker build -t agent-gateway:latest .
 
-# 启动容器 (映射端口 8080)
+# 启动容器 (映射端口 8080，并持久化数据)
 docker run -d -p 8080:8080 \
-  -e GATEWAY_LLM_APIKEY=your_openai_api_key \
+  -v $(pwd)/data:/app/data \
   --name agent-gateway \
   agent-gateway:latest
 ```
