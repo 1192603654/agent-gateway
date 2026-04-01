@@ -29,12 +29,20 @@
                 中心编排模型配置 (Orchestrator)
             </h2>
             <div id="currentConfigDisplay" class="mb-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100 flex justify-between items-center hidden">
-                <div class="text-sm text-indigo-900">
-                    当前中心模型：<span id="currentProviderLabel" class="font-bold">未配置</span> |
-                    模型：<span id="currentModelLabel" class="font-bold">-</span> |
-                    状态：<span id="currentStatusLabel" class="text-green-600 font-medium">就绪</span>
+                <div class="text-sm text-indigo-900 space-x-4">
+                    <span>供应商：<span id="currentProviderLabel" class="font-bold text-indigo-700">未配置</span></span>
+                    <span>模型：<span id="currentModelLabel" class="font-bold text-indigo-700">-</span></span>
+                    <span>Endpoint：<span id="currentUrlLabel" class="font-mono text-xs text-indigo-600 bg-white px-1 rounded"> - </span></span>
+                    <span>API Key：<span id="currentKeyLabel" class="font-mono text-indigo-700">********</span></span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                        <span class="w-2 h-2 mr-1 bg-green-500 rounded-full animate-pulse"></span>
+                        服务已就绪
+                    </span>
                 </div>
-                <button onclick="toggleConfigForm()" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">修改配置</button>
+                <button onclick="toggleConfigForm()" class="flex items-center px-3 py-1 bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 rounded-lg text-sm font-medium transition-colors shadow-sm">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    修改中心模型
+                </button>
             </div>
 
             <div id="configFormArea" class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -348,6 +356,9 @@
 
                     document.getElementById('currentProviderLabel').innerText = document.querySelector(`#sys_provider option[value="${config.provider}"]`).text;
                     document.getElementById('currentModelLabel').innerText = config.modelName || '-';
+                    document.getElementById('currentUrlLabel').innerText = config.baseUrl || DEFAULTS[config.provider].baseUrl;
+                    document.getElementById('currentKeyLabel').innerText = '********';
+
                     document.getElementById('currentConfigDisplay').classList.remove('hidden');
                     document.getElementById('configFormArea').classList.add('hidden');
                     updateDefaults(false); // Initial load, don't force defaults
@@ -395,6 +406,7 @@
                 });
                 alert("系统配置已应用");
                 document.getElementById('sys_apiKey').value = ''; // 清空 key 显示
+                loadSysConfig();
             } catch (e) {
                 alert("应用失败");
             }
