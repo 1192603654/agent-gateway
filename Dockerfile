@@ -17,5 +17,5 @@ COPY --from=build /app/gateway-server/target/gateway-server-1.0-SNAPSHOT.jar app
 
 RUN mkdir -p /app/data
 VOLUME /app/data
-EXPOSE 8080
+EXPOSE 9999
 ENTRYPOINT ["java", "-jar", "app.jar"]
