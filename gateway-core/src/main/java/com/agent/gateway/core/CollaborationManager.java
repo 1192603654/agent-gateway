@@ -49,9 +49,15 @@ public class CollaborationManager {
 
                 StringBuilder stepResult = new StringBuilder();
                 String finalNextAction = nextAction;
-                executor.executeStream(userInput, execParams, chunk -> {
-                    stepResult.append(chunk);
-                    if (listener != null) listener.onStepChunk(finalNextAction, chunk);
+                executor.executeStream(userInput, execParams, data -> {
+                    if (data instanceof String s) {
+                        stepResult.append(s);
+                    } else if (data instanceof com.fasterxml.jackson.databind.JsonNode node) {
+                        if ("message".equals(node.path("event").asText())) {
+                            stepResult.append(node.path("answer").asText());
+                        }
+                    }
+                    if (listener != null) listener.onStepChunk(finalNextAction, data);
                 });
 
                 String result = stepResult.toString();
@@ -78,7 +84,7 @@ public class CollaborationManager {
         final String[] finalResult = new String[1];
         collaborate(userInput, new CollaborationListener() {
             @Override public void onStepStart(String agentName, int step) {}
-            @Override public void onStepChunk(String agentName, String chunk) {}
+            @Override public void onStepChunk(String agentName, Object data) {}
             @Override public void onStepComplete(String agentName, String result) {}
             @Override public void onComplete(String res) { finalResult[0] = res; }
             @Override public void onError(String msg) { finalResult[0] = "Error: " + msg; }

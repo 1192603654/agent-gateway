@@ -47,7 +47,7 @@ public class GatewayController {
                     }
 
                     @Override
-                    public void onStepChunk(String agentName, String chunk) {
+                    public void onStepChunk(String agentName, Object chunk) {
                         sendEvent(emitter, "step_chunk", Map.of("agent", agentName, "chunk", chunk));
                     }
 

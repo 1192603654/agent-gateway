@@ -33,7 +33,7 @@ public class OpenClawAgentExecutor implements AgentExecutor {
     }
 
     @Override
-    public void executeStream(String input, Map<String, Object> parameters, java.util.function.Consumer<String> chunkConsumer) {
+    public void executeStream(String input, Map<String, Object> parameters, java.util.function.Consumer<Object> chunkConsumer) {
         log.info("Executing OpenClaw agent: {} with input: {}", name, input);
 
         try {

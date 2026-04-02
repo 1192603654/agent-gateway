@@ -291,7 +291,21 @@
                                     const parent = document.getElementById(`agent-box-${data.agent}`);
                                     if (parent) {
                                         const area = parent.querySelector('.chunk-area');
-                                        area.innerText += data.chunk;
+                                        if (typeof data.chunk === 'string') {
+                                            area.innerText += data.chunk;
+                                        } else if (data.chunk && typeof data.chunk === 'object') {
+                                            // Handle Dify structured data
+                                            if (data.chunk.event === 'message') {
+                                                area.innerText += data.chunk.answer || '';
+                                            } else if (data.chunk.event === 'node_started') {
+                                                console.log(`Node started: ${data.chunk.data?.title || data.chunk.data?.node_type}`);
+                                                // Optional: show a small visual indicator for the current node
+                                                const nodeInfo = document.createElement('span');
+                                                nodeInfo.className = 'text-[10px] bg-indigo-100 text-indigo-600 px-1 rounded mr-1 opacity-70';
+                                                nodeInfo.innerText = ` ➤ ${data.chunk.data?.title || 'Processing'} `;
+                                                area.appendChild(nodeInfo);
+                                            }
+                                        }
                                         resultContent.scrollTop = resultContent.scrollHeight;
                                     }
                                 } else if (currentEvent === 'step_complete') {

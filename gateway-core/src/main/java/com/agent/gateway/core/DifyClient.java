@@ -12,6 +12,7 @@ import java.net.http.HttpResponse;
 import java.util.Map;
 
 @Builder
+@Slf4j
 public class DifyClient {
     private final String apiKey;
     private final String endpoint;
@@ -28,7 +29,7 @@ public class DifyClient {
         return fullAnswer.toString();
     }
 
-    public void chatStream(String query, String user, Map<String, Object> inputs, String conversationId, java.util.function.Consumer<String> chunkConsumer) {
+    public void chatStream(String query, String user, Map<String, Object> inputs, String conversationId, java.util.function.Consumer<Object> chunkConsumer) {
         try {
             java.util.HashMap<String, Object> body = new java.util.HashMap<>();
             body.put("inputs", inputs != null ? inputs : Map.of());
@@ -58,10 +59,13 @@ public class DifyClient {
                 while (scanner.hasNextLine()) {
                     String line = scanner.nextLine();
                     if (line.startsWith("data:")) {
-                        JsonNode node = objectMapper.readTree(line.substring(5).trim());
-                        if (node.has("event") && "message".equals(node.get("event").asText())) {
-                            String answer = node.get("answer").asText();
-                            if (chunkConsumer != null) chunkConsumer.accept(answer);
+                        try {
+                            JsonNode node = objectMapper.readTree(line.substring(5).trim());
+                            if (chunkConsumer != null) {
+                                chunkConsumer.accept(node);
+                            }
+                        } catch (Exception e) {
+                            log.warn("Failed to parse Dify SSE data: {}", line);
                         }
                     }
                 }

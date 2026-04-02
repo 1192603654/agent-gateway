@@ -23,12 +23,20 @@ public class DifyAgentExecutor implements AgentExecutor {
     @Override
     public String execute(String input, Map<String, Object> parameters) {
         final StringBuilder sb = new StringBuilder();
-        executeStream(input, parameters, chunk -> sb.append(chunk));
+        executeStream(input, parameters, data -> {
+            if (data instanceof String s) {
+                sb.append(s);
+            } else if (data instanceof com.fasterxml.jackson.databind.JsonNode node) {
+                if ("message".equals(node.path("event").asText())) {
+                    sb.append(node.path("answer").asText());
+                }
+            }
+        });
         return sb.toString();
     }
 
     @Override
-    public void executeStream(String input, Map<String, Object> parameters, java.util.function.Consumer<String> chunkConsumer) {
+    public void executeStream(String input, Map<String, Object> parameters, java.util.function.Consumer<Object> chunkConsumer) {
         DifyClient client = DifyClient.builder()
                 .apiKey(apiKey)
                 .endpoint(endpoint)
