@@ -30,7 +30,7 @@ import java.util.concurrent.Executors;
 public class GatewayController {
     private final GatewayService gatewayService;
     private final ObjectMapper objectMapper;
-    private final ExecutorService executor = Executors.newCachedThreadPool();
+    private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
     @Operation(summary = "提交意图请求 (SSE 流式)", description = "第三方系统通过此接口提交用户意图，网关将以服务器发送事件 (SSE) 的形式实时返回执行进度和最终结果。")
     @PostMapping(value = "/query", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

@@ -55,17 +55,19 @@ public class DifyClient {
                 throw new RuntimeException("Dify API error code: " + response.statusCode());
             }
 
-            try (java.util.Scanner scanner = new java.util.Scanner(response.body(), "UTF-8")) {
-                while (scanner.hasNextLine()) {
-                    String line = scanner.nextLine();
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(response.body(), "UTF-8"))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
                     if (line.startsWith("data:")) {
+                        String data = line.substring(5).trim();
+                        if (data.isEmpty()) continue;
                         try {
-                            JsonNode node = objectMapper.readTree(line.substring(5).trim());
+                            JsonNode node = objectMapper.readTree(data);
                             if (chunkConsumer != null) {
                                 chunkConsumer.accept(node);
                             }
                         } catch (Exception e) {
-                            log.warn("Failed to parse Dify SSE data: {}", line);
+                            log.warn("Failed to parse Dify SSE data: {}", data);
                         }
                     }
                 }

@@ -151,29 +151,47 @@ public class CollaborationManager {
     }
 
     private String extractAgentName(String nextAction) {
-        if (nextAction.startsWith("{")) {
+        String jsonStr = cleanJsonString(nextAction);
+        if (jsonStr.startsWith("{")) {
             try {
-                com.fasterxml.jackson.databind.JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(nextAction);
+                com.fasterxml.jackson.databind.JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(jsonStr);
                 return node.path("agent").asText();
             } catch (Exception e) {
-                log.warn("Failed to parse agent JSON from Orchestrator: {}", nextAction);
+                log.warn("Failed to parse agent JSON from Orchestrator: {}", jsonStr);
             }
         }
-        return nextAction;
+        return nextAction.trim();
     }
 
     private Map<String, Object> extractParameters(String nextAction) {
-        if (nextAction.startsWith("{")) {
+        String jsonStr = cleanJsonString(nextAction);
+        if (jsonStr.startsWith("{")) {
             try {
-                com.fasterxml.jackson.databind.JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(nextAction);
+                com.fasterxml.jackson.databind.JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(jsonStr);
                 com.fasterxml.jackson.databind.JsonNode paramsNode = node.path("parameters");
                 if (paramsNode.isObject()) {
                     return new com.fasterxml.jackson.databind.ObjectMapper().convertValue(paramsNode, Map.class);
                 }
             } catch (Exception e) {
-                log.warn("Failed to parse parameters JSON from Orchestrator: {}", nextAction);
+                log.warn("Failed to parse parameters JSON from Orchestrator: {}", jsonStr);
             }
         }
         return Map.of();
+    }
+
+    private String cleanJsonString(String input) {
+        String result = input.trim();
+        if (result.contains("```json")) {
+            result = result.substring(result.indexOf("```json") + 7);
+            if (result.contains("```")) {
+                result = result.substring(0, result.indexOf("```"));
+            }
+        } else if (result.contains("```")) {
+            result = result.substring(result.indexOf("```") + 3);
+            if (result.contains("```")) {
+                result = result.substring(0, result.indexOf("```"));
+            }
+        }
+        return result.trim();
     }
 }
