@@ -38,17 +38,21 @@ public class CollaborationManager {
                     break; // Direct answer usually finishes the task
                 }
 
-                AgentExecutor executor = findExecutor(nextAction);
+                String agentName = extractAgentName(nextAction);
+                Map<String, Object> aiParams = extractParameters(nextAction);
+
+                AgentExecutor executor = findExecutor(agentName);
                 if (executor == null) break;
 
-                log.info("Collaborating step {}: calling agent {}", i + 1, nextAction);
-                if (listener != null) listener.onStepStart(nextAction, i + 1);
+                log.info("Collaborating step {}: calling agent {}", i + 1, agentName);
+                if (listener != null) listener.onStepStart(agentName, i + 1);
 
                 Map<String, Object> execParams = new java.util.HashMap<>(params != null ? params : Map.of());
+                execParams.putAll(aiParams);
                 execParams.put("history", conversationHistory.toString());
 
                 StringBuilder stepResult = new StringBuilder();
-                String finalNextAction = nextAction;
+                String finalNextAction = agentName;
                 executor.executeStream(userInput, execParams, data -> {
                     if (data instanceof String s) {
                         stepResult.append(s);
@@ -61,11 +65,11 @@ public class CollaborationManager {
                 });
 
                 String result = stepResult.toString();
-                conversationHistory.append("Agent (").append(nextAction).append("): ").append(result).append("\n");
+                conversationHistory.append("Agent (").append(agentName).append("): ").append(result).append("\n");
                 currentResult = result;
-                executedAgents.add(nextAction);
+                executedAgents.add(agentName);
 
-                if (listener != null) listener.onStepComplete(nextAction, result);
+                if (listener != null) listener.onStepComplete(agentName, result);
             }
 
             String finalRes = currentResult.isEmpty() ? "No agent could handle the request." : currentResult;
@@ -99,13 +103,17 @@ public class CollaborationManager {
 
         prompt.append("Available agents:\n");
         for (AgentExecutor agent : agents) {
-            prompt.append("- ").append(agent.getName()).append(" (Type: ").append(agent.getAgentType()).append(")\n");
+            prompt.append("- ").append(agent.getName())
+                  .append(" (Type: ").append(agent.getAgentType()).append(")\n")
+                  .append("  Description: ").append(agent.getDescription()).append("\n");
         }
 
         prompt.append("\nInstructions:\n");
         prompt.append("1. If you can answer the user's question directly (e.g., identity, system architecture, listing agents), respond with 'DIRECT_ANSWER'.\n");
-        prompt.append("2. If an agent is needed, respond with ONLY the agent name.\n");
-        prompt.append("3. If the user intent is fulfilled, respond with 'FINISH'.\n");
+        prompt.append("2. If an agent is needed, analyze its description to determine if parameters are required.\n");
+        prompt.append("3. If parameters are needed, respond in JSON format: {\"agent\": \"AGENT_NAME\", \"parameters\": {\"key\": \"value\"}}.\n");
+        prompt.append("4. If NO parameters are needed, respond with ONLY the agent name.\n");
+        prompt.append("5. If the user intent is fulfilled, respond with 'FINISH'.\n");
 
         prompt.append("\nExecuted so far: ").append(executed);
         prompt.append("\nConversation History:\n").append(history);
@@ -140,5 +148,32 @@ public class CollaborationManager {
                 .filter(a -> a.getName().equalsIgnoreCase(name))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private String extractAgentName(String nextAction) {
+        if (nextAction.startsWith("{")) {
+            try {
+                com.fasterxml.jackson.databind.JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(nextAction);
+                return node.path("agent").asText();
+            } catch (Exception e) {
+                log.warn("Failed to parse agent JSON from Orchestrator: {}", nextAction);
+            }
+        }
+        return nextAction;
+    }
+
+    private Map<String, Object> extractParameters(String nextAction) {
+        if (nextAction.startsWith("{")) {
+            try {
+                com.fasterxml.jackson.databind.JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(nextAction);
+                com.fasterxml.jackson.databind.JsonNode paramsNode = node.path("parameters");
+                if (paramsNode.isObject()) {
+                    return new com.fasterxml.jackson.databind.ObjectMapper().convertValue(paramsNode, Map.class);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to parse parameters JSON from Orchestrator: {}", nextAction);
+            }
+        }
+        return Map.of();
     }
 }

@@ -6,11 +6,13 @@ import java.util.Map;
 
 public class DifyAgentExecutor implements AgentExecutor {
     private final String name;
+    private final String description;
     private final String apiKey;
     private final String endpoint;
 
-    public DifyAgentExecutor(String name, String apiKey, String endpoint) {
+    public DifyAgentExecutor(String name, String description, String apiKey, String endpoint) {
         this.name = name;
+        this.description = description;
         this.apiKey = apiKey;
         this.endpoint = endpoint;
     }
@@ -18,6 +20,11 @@ public class DifyAgentExecutor implements AgentExecutor {
     @Override
     public String getName() {
         return name;
+    }
+
+    @Override
+    public String getDescription() {
+        return description;
     }
 
     @Override

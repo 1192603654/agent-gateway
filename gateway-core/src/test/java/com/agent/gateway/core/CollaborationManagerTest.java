@@ -20,6 +20,7 @@ class CollaborationManagerTest {
         // Actually, let's use a named class for the test
         class MockAgent implements AgentExecutor {
             public String getName() { return "MockAgent"; }
+            public String getDescription() { return "Mock description"; }
             public String execute(String input, java.util.Map<String, Object> parameters) { return "Mock result"; }
             public String getAgentType() { return "mock"; }
         }

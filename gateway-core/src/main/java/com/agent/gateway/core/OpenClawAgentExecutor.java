@@ -15,6 +15,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class OpenClawAgentExecutor implements AgentExecutor {
     private final String name;
+    private final String description;
     private final String endpoint; // This should be the base URL of the OpenAPI service
     private final String apiKey;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -23,6 +24,11 @@ public class OpenClawAgentExecutor implements AgentExecutor {
     @Override
     public String getName() {
         return name;
+    }
+
+    @Override
+    public String getDescription() {
+        return description;
     }
 
     @Override

@@ -4,6 +4,7 @@ import java.util.Map;
 
 public interface AgentExecutor {
     String getName();
+    String getDescription();
     String execute(String input, Map<String, Object> parameters);
 
     default void executeStream(String input, Map<String, Object> parameters, java.util.function.Consumer<Object> chunkConsumer) {

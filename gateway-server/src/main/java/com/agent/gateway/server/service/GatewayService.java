@@ -72,7 +72,7 @@ public class GatewayService {
         List<AgentExecutor> executors = configs.stream()
                 .map(c -> {
                     String key = c.getApiKey() != null ? c.getApiKey().trim() : "";
-                    return AgentFactory.create(c.getName(), c.getType(), c.getEndpoint(), key);
+                    return AgentFactory.create(c.getName(), c.getDescription(), c.getType(), c.getEndpoint(), key);
                 })
                 .collect(Collectors.toList());
 
@@ -90,7 +90,7 @@ public class GatewayService {
         List<AgentExecutor> executors = configs.stream()
                 .map(c -> {
                     String key = c.getApiKey() != null ? c.getApiKey().trim() : "";
-                    return AgentFactory.create(c.getName(), c.getType(), c.getEndpoint(), key);
+                    return AgentFactory.create(c.getName(), c.getDescription(), c.getType(), c.getEndpoint(), key);
                 })
                 .collect(Collectors.toList());
 

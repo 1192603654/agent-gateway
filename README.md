@@ -16,8 +16,8 @@
 # 构建镜像
 docker build -t agent-gateway:latest .
 
-# 启动容器 (映射端口 8080，并持久化数据)
-docker run -d -p 8080:8080 \
+# 启动容器 (映射端口 9999，并持久化数据)
+docker run -d -p 9999:9999 \
   -v $(pwd)/data:/app/data \
   --name agent-gateway \
   agent-gateway:latest
@@ -33,5 +33,5 @@ docker run -d -p 8080:8080 \
 mvn clean install
 mvn spring-boot:run -pl gateway-server
 ```
-网页控制台：[http://localhost:8080](http://localhost:8080)
-API 文档：[http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+网页控制台：[http://localhost:9999](http://localhost:9999)
+API 文档：[http://localhost:9999/swagger-ui.html](http://localhost:9999/swagger-ui.html)

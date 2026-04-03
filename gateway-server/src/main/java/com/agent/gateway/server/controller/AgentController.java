@@ -21,6 +21,12 @@ public class AgentController {
 
     @PostMapping
     public AgentConfig create(@RequestBody AgentConfig config) {
+        if (config.getId() != null) {
+            AgentConfig existing = repository.findById(config.getId()).orElse(null);
+            if (existing != null && (config.getApiKey() == null || config.getApiKey().trim().isEmpty())) {
+                config.setApiKey(existing.getApiKey());
+            }
+        }
         return repository.save(config);
     }
 
