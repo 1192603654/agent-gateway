@@ -89,11 +89,20 @@ public class ConfigController {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 200) {
                 JsonNode root = objectMapper.readTree(response.body());
-                JsonNode data = root.path("data");
+                // 兼容 OpenAI 格式 (data 数组) 和部分供应商可能的其他格式
+                JsonNode data = root.has("data") ? root.get("data") : root;
+
+                // DashScope 有时返回 { "models": [...] }
+                if (data.isObject() && data.has("models")) {
+                    data = data.get("models");
+                }
+
                 if (data.isArray()) {
                     for (JsonNode node : data) {
-                        String id = node.path("id").asText();
-                        if (id != null && !id.isEmpty()) models.add(id);
+                        // 优先取 id, 其次取 model_id (DashScope 常用)
+                        String id = node.has("id") ? node.get("id").asText() :
+                                   (node.has("model_id") ? node.get("model_id").asText() : "");
+                        if (!id.isEmpty()) models.add(id);
                     }
                 }
             }
