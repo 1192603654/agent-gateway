@@ -43,9 +43,18 @@ public class GatewayService {
                         .apiKey(apiKey)
                         .build();
             case "dashscope":
+                String modelName = config.getModelName() != null && !config.getModelName().isEmpty() ? config.getModelName() : "qwen3-max";
+                // 优化：针对新一代 Qwen3 及多模态模型，使用 OpenAI 兼容模式连接，解决原生 SDK 的 URL 适配问题
+                if (modelName.startsWith("qwen3") || modelName.contains("plus") || modelName.contains("max")) {
+                    return OpenAiChatModel.builder()
+                            .apiKey(apiKey)
+                            .baseUrl("https://dashscope.aliyuncs.com/compatible-mode/v1")
+                            .modelName(modelName)
+                            .build();
+                }
                 return QwenChatModel.builder()
                         .apiKey(apiKey)
-                        .modelName(config.getModelName() != null && !config.getModelName().isEmpty() ? config.getModelName() : "qwen-turbo")
+                        .modelName(modelName)
                         .build();
             case "openai":
             default:

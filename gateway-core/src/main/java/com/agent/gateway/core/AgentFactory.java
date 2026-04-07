@@ -8,6 +8,8 @@ public class AgentFactory {
             return new DifyAgentExecutor(name, description, apiKey, endpoint);
         } else if ("openclaw".equalsIgnoreCase(type)) {
             return new OpenClawAgentExecutor(name, description, endpoint, apiKey);
+        } else if ("dashscope".equalsIgnoreCase(type)) {
+            return new DashScopeAgentExecutor(name, description, apiKey, endpoint);
         }
         throw new IllegalArgumentException("Unknown agent type: " + type);
     }
