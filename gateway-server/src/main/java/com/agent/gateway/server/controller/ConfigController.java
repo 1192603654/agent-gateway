@@ -15,6 +15,10 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 系统配置控制器
+ * 负责管理中心编排模型的供应商、模型名称、API Key 等。
+ */
 @RestController
 @RequestMapping("/api/config")
 @RequiredArgsConstructor
@@ -24,14 +28,21 @@ public class ConfigController {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
+    /**
+     * 获取当前中心编排模型配置
+     */
     @GetMapping("/orchestrator")
     public SystemConfig getOrchestratorConfig() {
         return repository.findById("ORCHESTRATOR_MODEL").orElse(new SystemConfig());
     }
 
+    /**
+     * 保存中心编排模型配置
+     */
     @PostMapping("/orchestrator")
     public SystemConfig saveOrchestratorConfig(@RequestBody SystemConfig config) {
         SystemConfig existing = repository.findById("ORCHESTRATOR_MODEL").orElse(null);
+        // 如果 API Key 为空，保留数据库中的原有 Key
         if (existing != null && (config.getApiKey() == null || config.getApiKey().isEmpty())) {
             config.setApiKey(existing.getApiKey());
         }
@@ -39,6 +50,9 @@ public class ConfigController {
         return repository.save(config);
     }
 
+    /**
+     * 动态获取指定供应商的模型列表
+     */
     @GetMapping("/models")
     public List<String> getModels(@RequestParam("provider") String provider,
                                  @RequestParam(value = "baseUrl", required = false) String baseUrl,
@@ -48,13 +62,14 @@ public class ConfigController {
             String url = baseUrl;
             String key = apiKey;
 
-            // If key or url is missing, try to load from saved config
+            // 如果参数未提供，尝试从已保存的配置中读取
             SystemConfig saved = repository.findById("ORCHESTRATOR_MODEL").orElse(null);
             if (saved != null && provider.equals(saved.getProvider())) {
                 if (url == null || url.isEmpty()) url = saved.getBaseUrl();
                 if (key == null || key.isEmpty()) key = saved.getApiKey();
             }
 
+            // 默认端点 fallback
             if (url == null || url.isEmpty()) {
                 if ("openai".equals(provider)) url = "https://api.openai.com/v1";
                 else if ("zhipu".equals(provider)) url = "https://open.bigmodel.cn/api/paas/v4/";
@@ -83,7 +98,7 @@ public class ConfigController {
                 }
             }
         } catch (Exception e) {
-            log.error("Failed to fetch models for provider {}", provider, e);
+            log.error("获取供应商 {} 的模型列表失败", provider, e);
         }
         return models;
     }

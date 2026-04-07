@@ -8,6 +8,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 智能体配置控制器
+ * 提供对子智能体的增删改查 API。
+ */
 @RestController
 @RequestMapping("/api/agents")
 @RequiredArgsConstructor
@@ -21,6 +25,7 @@ public class AgentController {
 
     @PostMapping
     public AgentConfig create(@RequestBody AgentConfig config) {
+        // 如果是更新操作且 API Key 为空，则保留原有的 Key
         if (config.getId() != null) {
             AgentConfig existing = repository.findById(config.getId()).orElse(null);
             if (existing != null && (config.getApiKey() == null || config.getApiKey().trim().isEmpty())) {

@@ -11,6 +11,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Map;
 
+/**
+ * Dify 客户端
+ * 负责与 Dify 的 chat-messages 接口进行通信，支持 SSE 流式解析。
+ */
 @Builder
 @Slf4j
 public class DifyClient {
@@ -25,10 +29,21 @@ public class DifyClient {
 
     public String chat(String query, String user, Map<String, Object> inputs, String conversationId) {
         final StringBuilder fullAnswer = new StringBuilder();
-        chatStream(query, user, inputs, conversationId, chunk -> fullAnswer.append(chunk));
+        chatStream(query, user, inputs, conversationId, chunk -> {
+            if (chunk instanceof JsonNode node) {
+                if ("message".equals(node.path("event").asText())) {
+                    fullAnswer.append(node.path("answer").asText());
+                }
+            } else if (chunk instanceof String s) {
+                fullAnswer.append(s);
+            }
+        });
         return fullAnswer.toString();
     }
 
+    /**
+     * 发起流式聊天请求
+     */
     public void chatStream(String query, String user, Map<String, Object> inputs, String conversationId, java.util.function.Consumer<Object> chunkConsumer) {
         try {
             java.util.HashMap<String, Object> body = new java.util.HashMap<>();
@@ -49,12 +64,14 @@ public class DifyClient {
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();
 
+            // 发起请求并获取响应流
             HttpResponse<java.io.InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
             if (response.statusCode() != 200) {
-                throw new RuntimeException("Dify API error code: " + response.statusCode());
+                throw new RuntimeException("Dify API 返回错误码: " + response.statusCode());
             }
 
+            // 解析 SSE 数据流
             try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(response.body(), "UTF-8"))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
@@ -67,14 +84,14 @@ public class DifyClient {
                                 chunkConsumer.accept(node);
                             }
                         } catch (Exception e) {
-                            log.warn("Failed to parse Dify SSE data: {}", data);
+                            log.warn("无法解析 Dify SSE 数据: {}", data);
                         }
                     }
                 }
             }
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to call Dify API", e);
+            throw new RuntimeException("调用 Dify API 失败", e);
         }
     }
 }

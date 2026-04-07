@@ -4,6 +4,9 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
 
+/**
+ * Dify 架构智能体执行器
+ */
 public class DifyAgentExecutor implements AgentExecutor {
     private final String name;
     private final String description;
@@ -30,10 +33,12 @@ public class DifyAgentExecutor implements AgentExecutor {
     @Override
     public String execute(String input, Map<String, Object> parameters) {
         final StringBuilder sb = new StringBuilder();
+        // 内部通过流式接口执行并聚合结果
         executeStream(input, parameters, data -> {
             if (data instanceof String s) {
                 sb.append(s);
             } else if (data instanceof com.fasterxml.jackson.databind.JsonNode node) {
+                // 处理 Dify 原生的 message 事件
                 if ("message".equals(node.path("event").asText())) {
                     sb.append(node.path("answer").asText());
                 }
@@ -51,6 +56,8 @@ public class DifyAgentExecutor implements AgentExecutor {
 
         String user = (String) parameters.getOrDefault("user", "gateway-user");
         String conversationId = (String) parameters.get("conversation_id");
+
+        // Dify 的 inputs 参数通常包含业务变量，默认使用全量 parameters
         Map<String, Object> inputs = (Map<String, Object>) parameters.getOrDefault("inputs", parameters);
 
         client.chatStream(input, user, inputs, conversationId, chunkConsumer);
