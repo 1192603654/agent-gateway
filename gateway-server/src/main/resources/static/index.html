@@ -48,7 +48,7 @@
             <div id="configFormArea" class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">供应商</label>
-                    <select id="sys_provider" onchange="updateDefaults(true)" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <select id="sys_provider" onchange="updateDefaults(true); fetchProviderModels();" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none">
                         <option value="openai">OpenAI / 兼容</option>
                         <option value="zhipu">智谱 AI (GLM)</option>
                         <option value="dashscope">阿里千问 (DashScope)</option>
@@ -56,11 +56,11 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Base URL (可选)</label>
-                    <input type="text" id="sys_baseUrl" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <input type="text" id="sys_baseUrl" onblur="fetchProviderModels()" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">API Key</label>
-                    <input type="password" id="sys_apiKey" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="保持为空则不更新">
+                    <input type="password" id="sys_apiKey" onblur="fetchProviderModels()" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="保持为空则不更新">
                 </div>
                 <div class="flex items-end space-x-2">
                     <div class="flex-1">
@@ -444,19 +444,56 @@
             }
         };
 
-        function updateDefaults(force = false) {
+        async function fetchProviderModels() {
+            const provider = document.getElementById('sys_provider').value;
+            const baseUrl = document.getElementById('sys_baseUrl').value;
+            const apiKey = document.getElementById('sys_apiKey').value;
+
+            if (!provider) return;
+
+            try {
+                const params = new URLSearchParams({ provider });
+                if (baseUrl) params.append('baseUrl', baseUrl);
+                if (apiKey) params.append('apiKey', apiKey);
+
+                const res = await fetch(`/api/config/models?${params.toString()}`);
+                if (res.ok) {
+                    const models = await res.json();
+                    if (models && models.length > 0) {
+                        const datalist = document.getElementById('modelOptions');
+                        datalist.innerHTML = '';
+                        models.forEach(m => {
+                            const opt = document.createElement('option');
+                            opt.value = m;
+                            datalist.appendChild(opt);
+                        });
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.warn("Dynamic model fetch failed, fallback to defaults");
+            }
+            return false;
+        }
+
+        async function updateDefaults(force = false) {
             const provider = document.getElementById('sys_provider').value;
             const config = DEFAULTS[provider];
             if (config) {
                 document.getElementById('sys_baseUrl').placeholder = config.baseUrl;
 
-                const datalist = document.getElementById('modelOptions');
-                datalist.innerHTML = '';
-                config.models.forEach(m => {
-                    const opt = document.createElement('option');
-                    opt.value = m;
-                    datalist.appendChild(opt);
-                });
+                // Try dynamic fetch first
+                const dynamicSuccess = await fetchProviderModels();
+
+                if (!dynamicSuccess) {
+                    const datalist = document.getElementById('modelOptions');
+                    datalist.innerHTML = '';
+                    config.models.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m;
+                        datalist.appendChild(opt);
+                    });
+                }
 
                 document.getElementById('sys_modelName').placeholder = config.modelName;
 
