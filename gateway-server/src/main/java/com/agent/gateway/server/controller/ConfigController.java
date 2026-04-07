@@ -40,7 +40,9 @@ public class ConfigController {
     }
 
     @GetMapping("/models")
-    public List<String> getModels(@RequestParam String provider, @RequestParam(required = false) String baseUrl, @RequestParam(required = false) String apiKey) {
+    public List<String> getModels(@RequestParam("provider") String provider,
+                                 @RequestParam(value = "baseUrl", required = false) String baseUrl,
+                                 @RequestParam(value = "apiKey", required = false) String apiKey) {
         List<String> models = new ArrayList<>();
         try {
             String url = baseUrl;
