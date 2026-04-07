@@ -89,17 +89,20 @@ public class ConfigController {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 200) {
                 JsonNode root = objectMapper.readTree(response.body());
-                // 兼容 OpenAI 格式 (data 数组) 和部分供应商可能的其他格式
-                JsonNode data = root.has("data") ? root.get("data") : root;
 
-                // DashScope 有时返回 { "models": [...] }
-                if (data.isObject() && data.has("models")) {
-                    data = data.get("models");
+                // 递归查找模型数组，兼容 OpenAI (data), DashScope (output.models), ZhipuAI (data) 等
+                JsonNode data = null;
+                if (root.has("data") && root.get("data").isArray()) {
+                    data = root.get("data");
+                } else if (root.has("output") && root.get("output").has("models") && root.get("output").get("models").isArray()) {
+                    data = root.get("output").get("models");
+                } else if (root.has("models") && root.get("models").isArray()) {
+                    data = root.get("models");
                 }
 
-                if (data.isArray()) {
+                if (data != null && data.isArray()) {
                     for (JsonNode node : data) {
-                        // 优先取 id, 其次取 model_id (DashScope 常用)
+                        // 优先取 id, 其次取 model_id
                         String id = node.has("id") ? node.get("id").asText() :
                                    (node.has("model_id") ? node.get("model_id").asText() : "");
                         if (!id.isEmpty()) models.add(id);
