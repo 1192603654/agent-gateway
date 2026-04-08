@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sub-Agent Gateway 控制中心</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+    </style>
+</head>
+<body class="p-8">
+    <div class="max-w-6xl mx-auto space-y-8">
+        <header class="flex justify-between items-center pb-6 border-b border-gray-200">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900">Sub-Agent Gateway</h1>
+                <p class="text-slate-500 mt-1">嵌入式多智能体协作管理中心</p>
+            </div>
+            <div class="bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium border border-blue-100">
+                系统就绪
+            </div>
+        </header>
+
+        <!-- 系统全局配置 -->
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
+            <h2 class="text-xl font-semibold text-slate-800 mb-4 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                中心编排模型配置 (Orchestrator)
+            </h2>
+            <div id="currentConfigDisplay" class="mb-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100 flex justify-between items-center hidden">
+                <div class="text-sm text-indigo-900 space-x-4">
+                    <span>供应商：<span id="currentProviderLabel" class="font-bold text-indigo-700">未配置</span></span>
+                    <span>模型：<span id="currentModelLabel" class="font-bold text-indigo-700">-</span></span>
+                    <span>Endpoint：<span id="currentUrlLabel" class="font-mono text-xs text-indigo-600 bg-white px-1 rounded"> - </span></span>
+                    <span>API Key：<span id="currentKeyLabel" class="font-mono text-indigo-700">********</span></span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                        <span class="w-2 h-2 mr-1 bg-green-500 rounded-full animate-pulse"></span>
+                        服务已就绪
+                    </span>
+                </div>
+                <button onclick="toggleConfigForm()" class="flex items-center px-3 py-1 bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 rounded-lg text-sm font-medium transition-colors shadow-sm">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    修改中心模型
+                </button>
+            </div>
+
+            <div id="configFormArea" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">供应商</label>
+                    <select id="sys_provider" onchange="updateDefaults(true); fetchProviderModels();" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="openai">OpenAI / 兼容</option>
+                        <option value="zhipu">智谱 AI (GLM)</option>
+                        <option value="dashscope">阿里千问 (DashScope)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Base URL (可选)</label>
+                    <input type="text" id="sys_baseUrl" onblur="fetchProviderModels()" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">API Key</label>
+                    <input type="password" id="sys_apiKey" onblur="fetchProviderModels()" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="保持为空则不更新">
+                </div>
+                <div class="flex items-end space-x-2">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型名称</label>
+                        <input type="text" id="sys_modelName" list="modelOptions" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <datalist id="modelOptions"></datalist>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="saveSysConfig()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                            应用
+                        </button>
+                        <button onclick="testConfig()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-2 px-4 rounded-lg transition-colors">
+                            测试
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- 配置表单 -->
+            <section class="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+                <h2 id="formTitle" class="text-xl font-semibold text-slate-800 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    新增智能体
+                </h2>
+                <div class="space-y-4">
+                    <input type="hidden" id="agentId">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">名称</label>
+                        <input type="text" id="name" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none" placeholder="例如：WeatherAgent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">类型</label>
+                        <select id="type" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="dify">Dify 架构</option>
+                            <option value="dashscope">阿里云百炼 (DashScope)</option>
+                            <option value="openclaw">OpenClaw OpenAPI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">API 端点 (Endpoint)</label>
+                        <input type="text" id="endpoint" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="http://192.168.200.60/v1">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">API Key</label>
+                        <input type="password" id="apiKey" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="app-xxxxxxxx">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">描述</label>
+                        <textarea id="description" rows="2" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="描述此智能体的功能和适用意图"></textarea>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="saveAgent()" id="saveBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors flex justify-center items-center">
+                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            保存配置
+                        </button>
+                        <button onclick="resetAgentForm()" id="cancelBtn" class="hidden px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium rounded-lg transition-colors">
+                            取消
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 列表与测试 -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- 智能体列表 -->
+                <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h2 class="text-xl font-semibold text-slate-800 mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                        已配置智能体
+                    </h2>
+                    <div class="overflow-hidden border border-gray-200 rounded-xl">
+                        <table class="min-w-full divide-y divide-gray-200" id="agentTable">
+                            <thead class="bg-slate-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">名称</th>
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">类型</th>
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">端点</th>
+                                    <th class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <!-- 动态内容 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 对话测试 -->
+                <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h2 class="text-xl font-semibold text-slate-800 mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                        网关实时测试 (Intent Orchestration)
+                    </h2>
+                    <div class="flex space-x-3">
+                        <input type="text" id="queryInput" class="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" placeholder="输入用户的提问，测试网关的意图识别和协作执行...">
+                        <button onclick="sendQuery()" id="sendBtn" class="bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-2 rounded-lg transition-colors flex items-center">
+                            <span>执行</span>
+                        </button>
+                    </div>
+                    <div id="resultBox" class="mt-4 p-4 bg-slate-50 rounded-xl border border-dashed border-gray-300 min-h-[100px] text-slate-600 hidden">
+                        <div class="font-semibold text-xs text-slate-400 uppercase mb-2">网关响应:</div>
+                        <div id="resultContent" class="text-sm whitespace-pre-wrap"></div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- 嵌入式聊天组件集成 (示例，若部署了对应的前端服务请更新 src) -->
+    <div id="cora-fixed-wrap" class="hidden md:block">
+        <div id="iframe-placeholder" class="w-full h-full flex flex-col items-center justify-center bg-slate-50 border-l border-slate-200 p-8 text-center">
+            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+            </div>
+            <h3 class="text-slate-800 font-semibold mb-2">嵌入式聊天组件</h3>
+            <p class="text-sm text-slate-500 mb-6">此区域预留用于集成你的 Vue 架构聊天框。目前网关已开启 CORS 支持，你可以将 iframe 的 src 指向你的前端服务。</p>
+            <code class="text-[10px] bg-slate-200 p-2 rounded text-slate-600 break-all mb-4">
+                src="your-vue-app/embed?chatSseUrl=http://localhost:9999/api/gateway/query"
+            </code>
+            <button onclick="this.parentElement.style.display='none'; document.getElementById('cora-fixed-iframe').style.display='block'" class="text-xs text-blue-600 font-medium hover:underline">尝试加载默认 iframe</button>
+        </div>
+        <iframe
+            id="cora-fixed-iframe"
+            src="http://localhost:9999/embed?embed=1&chatSseUrl=%2Fapi%2Fgateway%2Fquery"
+            referrerpolicy="strict-origin-when-cross-origin"
+            style="display: none;"
+        ></iframe>
+    </div>
+
+    <style>
+        #cora-fixed-wrap {
+            position: fixed;
+            top: 0;
+            right: 0;
+            z-index: 2147483000;
+            width: 380px;
+            height: 100vh;
+            box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
+        }
+
+        #cora-fixed-iframe {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            background: #fff;
+        }
+
+        @media (max-width: 480px) {
+            #cora-fixed-wrap {
+                width: min(100vw, 320px);
+            }
+        }
+    </style>
+
+    <script>
+        let currentAgents = [];
+
+        async function loadAgents() {
+            try {
+                const res = await fetch('/api/agents');
+                currentAgents = await res.json();
+                const tbody = document.querySelector('#agentTable tbody');
+                tbody.innerHTML = '';
+                currentAgents.forEach(agent => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50 transition-colors';
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${agent.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                            <span class="px-2 py-1 bg-gray-100 rounded-md text-xs">${agent.type}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${agent.endpoint || '-'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                            <button onclick='prepareEdit(${agent.id})' class="text-blue-600 hover:text-blue-800 transition-colors">编辑</button>
+                            <button onclick="deleteAgent(${agent.id})" class="text-red-600 hover:text-red-800 transition-colors">删除</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                console.error("加载列表失败", e);
+            }
+        }
+
+        function prepareEdit(id) {
+            const agent = currentAgents.find(a => a.id === id);
+            if (!agent) return;
+
+            document.getElementById('agentId').value = agent.id;
+            document.getElementById('name').value = agent.name;
+            document.getElementById('type').value = agent.type;
+            document.getElementById('endpoint').value = agent.endpoint || '';
+            document.getElementById('apiKey').value = '';
+            document.getElementById('apiKey').placeholder = '保持为空则不更新';
+            document.getElementById('description').value = agent.description || '';
+
+            document.getElementById('formTitle').innerText = '编辑智能体';
+            document.getElementById('cancelBtn').classList.remove('hidden');
+            document.getElementById('name').focus();
+        }
+
+        function resetAgentForm() {
+            document.getElementById('agentId').value = '';
+            document.getElementById('name').value = '';
+            document.getElementById('type').value = 'dify';
+            document.getElementById('endpoint').value = '';
+            document.getElementById('apiKey').value = '';
+            document.getElementById('apiKey').placeholder = 'app-xxxxxxxx';
+            document.getElementById('description').value = '';
+
+            document.getElementById('formTitle').innerText = '新增智能体';
+            document.getElementById('cancelBtn').classList.add('hidden');
+        }
+
+        async function saveAgent() {
+            const agentId = document.getElementById('agentId').value;
+            const config = {
+                name: document.getElementById('name').value,
+                type: document.getElementById('type').value,
+                endpoint: document.getElementById('endpoint').value,
+                apiKey: document.getElementById('apiKey').value,
+                description: document.getElementById('description').value
+            };
+            if (agentId) config.id = agentId;
+
+            if (!config.name) {
+                alert("请填写名称");
+                return;
+            }
+            if (!agentId && !config.apiKey) {
+                alert("请填写 API Key");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/agents', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                if (!res.ok) throw new Error("Save failed");
+
+                resetAgentForm();
+                loadAgents();
+            } catch (e) {
+                alert("保存失败");
+            }
+        }
+
+        async function deleteAgent(id) {
+            if (!confirm("确定删除吗？")) return;
+            try {
+                await fetch(`/api/agents/${id}`, { method: 'DELETE' });
+                loadAgents();
+            } catch (e) {
+                alert("删除失败");
+            }
+        }
+
+        async function sendQuery() {
+            const query = document.getElementById('queryInput').value;
+            if (!query) return;
+
+            const sendBtn = document.getElementById('sendBtn');
+            const resultBox = document.getElementById('resultBox');
+            const resultContent = document.getElementById('resultContent');
+
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<span>执行中...</span>';
+            resultBox.classList.remove('hidden');
+            resultContent.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/gateway/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                let currentEvent = '';
+                let currentData = '';
+                let buffer = '';
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+
+                    buffer = lines.pop();
+
+                    for (let line of lines) {
+                        line = line.trim();
+                        if (!line) continue;
+
+                        if (line.startsWith('event:')) {
+                            currentEvent = line.substring(6).trim();
+                        } else if (line.startsWith('data:')) {
+                            currentData = line.substring(5).trim();
+
+                            try {
+                                const data = JSON.parse(currentData);
+
+                                if (currentEvent === 'step_start') {
+                                    const div = document.createElement('div');
+                                    div.id = `agent-box-${data.agent}`;
+                                    div.className = 'mb-2 p-2 bg-white rounded border border-gray-100 transition-colors';
+                                    div.innerHTML = `<span class="text-blue-500 font-bold">[开始执行]</span> 智能体: ${data.agent} (步骤 ${data.step})<div class="mt-1 text-slate-600 italic chunk-area"></div>`;
+                                    resultContent.appendChild(div);
+                                } else if (currentEvent === 'step_chunk') {
+                                    const parent = document.getElementById(`agent-box-${data.agent}`);
+                                    if (parent) {
+                                        const area = parent.querySelector('.chunk-area');
+                                        if (typeof data.chunk === 'string') {
+                                            area.innerText += data.chunk;
+                                        } else if (data.chunk && typeof data.chunk === 'object') {
+                                            if (data.chunk.event === 'message') {
+                                                area.innerText += data.chunk.answer || '';
+                                            } else if (data.chunk.event === 'node_started') {
+                                                console.log(`Node started: ${data.chunk.data?.title || data.chunk.data?.node_type}`);
+                                                const nodeInfo = document.createElement('span');
+                                                nodeInfo.className = 'text-[10px] bg-indigo-100 text-indigo-600 px-1 rounded mr-1 opacity-70';
+                                                nodeInfo.innerText = ` ➤ ${data.chunk.data?.title || 'Processing'} `;
+                                                area.appendChild(nodeInfo);
+                                            }
+                                        }
+                                        resultContent.scrollTop = resultContent.scrollHeight;
+                                    }
+                                } else if (currentEvent === 'step_complete') {
+                                    const parent = document.getElementById(`agent-box-${data.agent}`);
+                                    if (parent) {
+                                        parent.classList.add('bg-green-50');
+                                        parent.querySelector('.chunk-area').classList.remove('italic');
+                                    }
+                                } else if (currentEvent === 'final_result') {
+                                    const div = document.createElement('div');
+                                    div.className = 'mt-4 mb-2 p-4 bg-blue-50 rounded-xl border border-blue-100 text-slate-800 font-medium shadow-sm';
+                                    div.innerHTML = `<div class="text-xs text-blue-400 font-bold uppercase mb-1">网关最终回答</div>${data.result}`;
+                                    resultContent.appendChild(div);
+                                } else if (currentEvent === 'error') {
+                                    const div = document.createElement('div');
+                                    div.className = 'mb-2 p-2 bg-red-50 text-red-700 rounded border border-red-100';
+                                    div.innerHTML = `<span class="text-red-500 font-bold">[错误]</span> ${data.message}`;
+                                    resultContent.appendChild(div);
+                                }
+                            } catch (e) {
+                                console.error("Parse error for data:", currentData, e);
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                resultContent.innerText = "请求发生错误: " + e.message;
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = '<span>执行</span>';
+            }
+        }
+
+        const DEFAULTS = {
+            openai: {
+                baseUrl: 'https://api.openai.com/v1',
+                modelName: 'gpt-4o',
+                models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo']
+            },
+            zhipu: {
+                baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+                modelName: 'glm-4-plus',
+                models: ['glm-4-plus', 'glm-4-0520', 'glm-4', 'glm-4-flash', 'glm-4-air', 'glm-4-9b']
+            },
+            dashscope: {
+                baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+                modelName: 'qwen-max',
+                models: ['qwen-max', 'qwen-plus', 'qwen-turbo', 'qwen-max-longcontext']
+            }
+        };
+
+        async function fetchProviderModels() {
+            const provider = document.getElementById('sys_provider').value;
+            const baseUrl = document.getElementById('sys_baseUrl').value;
+            const apiKey = document.getElementById('sys_apiKey').value;
+
+            if (!provider) return;
+
+            try {
+                const params = new URLSearchParams({ provider });
+                if (baseUrl) params.append('baseUrl', baseUrl);
+                if (apiKey) params.append('apiKey', apiKey);
+
+                const res = await fetch(`/api/config/models?${params.toString()}`);
+                if (res.ok) {
+                    const models = await res.json();
+                    if (models && models.length > 0) {
+                        const datalist = document.getElementById('modelOptions');
+                        datalist.innerHTML = '';
+                        models.forEach(m => {
+                            const opt = document.createElement('option');
+                            opt.value = m;
+                            datalist.appendChild(opt);
+                        });
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.warn("Dynamic model fetch failed, fallback to defaults");
+            }
+            return false;
+        }
+
+        async function updateDefaults(force = false) {
+            const provider = document.getElementById('sys_provider').value;
+            const config = DEFAULTS[provider];
+            if (config) {
+                document.getElementById('sys_baseUrl').placeholder = config.baseUrl;
+
+                // Try dynamic fetch first
+                const dynamicSuccess = await fetchProviderModels();
+
+                if (!dynamicSuccess) {
+                    const datalist = document.getElementById('modelOptions');
+                    datalist.innerHTML = '';
+                    config.models.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m;
+                        datalist.appendChild(opt);
+                    });
+                }
+
+                document.getElementById('sys_modelName').placeholder = config.modelName;
+
+                if (force || !document.getElementById('sys_modelName').value) {
+                    document.getElementById('sys_modelName').value = config.modelName;
+                }
+
+                if (force || !document.getElementById('sys_baseUrl').value) {
+                    document.getElementById('sys_baseUrl').value = config.baseUrl;
+                }
+            }
+        }
+
+        function toggleConfigForm() {
+            const form = document.getElementById('configFormArea');
+            form.classList.toggle('hidden');
+        }
+
+        async function loadSysConfig() {
+            try {
+                const res = await fetch('/api/config/orchestrator');
+                const config = await res.json();
+                if (config.provider) {
+                    document.getElementById('sys_provider').value = config.provider;
+                    document.getElementById('sys_baseUrl').value = config.baseUrl || '';
+                    document.getElementById('sys_modelName').value = config.modelName || '';
+
+                    document.getElementById('currentProviderLabel').innerText = document.querySelector(`#sys_provider option[value="${config.provider}"]`).text;
+                    document.getElementById('currentModelLabel').innerText = config.modelName || '-';
+                    document.getElementById('currentUrlLabel').innerText = config.baseUrl || DEFAULTS[config.provider].baseUrl;
+                    document.getElementById('currentKeyLabel').innerText = '********';
+
+                    document.getElementById('currentConfigDisplay').classList.remove('hidden');
+                    document.getElementById('configFormArea').classList.add('hidden');
+                    updateDefaults(false);
+                } else {
+                    updateDefaults(false);
+                }
+            } catch (e) {
+                console.error("加载系统配置失败", e);
+            }
+        }
+
+        async function testConfig() {
+            const btn = event.target;
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = '测试中...';
+            try {
+                const res = await fetch('/api/gateway/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: 'ping' })
+                });
+                if (res.ok) alert("测试连接成功！中心模型可正常识别意图。");
+                else alert("测试失败，请检查 API Key 和网络配置。");
+            } catch (e) {
+                alert("请求错误: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        }
+
+        async function saveSysConfig() {
+            const config = {
+                provider: document.getElementById('sys_provider').value,
+                baseUrl: document.getElementById('sys_baseUrl').value,
+                apiKey: document.getElementById('sys_apiKey').value,
+                modelName: document.getElementById('sys_modelName').value
+            };
+            try {
+                await fetch('/api/config/orchestrator', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                alert("系统配置已应用");
+                document.getElementById('sys_apiKey').value = '';
+                loadSysConfig();
+            } catch (e) {
+                alert("应用失败");
+            }
+        }
+
+        loadAgents();
+        loadSysConfig();
+    </script>
+</body>
+</html>
