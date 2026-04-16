@@ -80,6 +80,12 @@ public class DifyClient {
                         if (data.isEmpty()) continue;
                         try {
                             JsonNode node = objectMapper.readTree(data);
+
+                            // 提取 conversation_id 并通知消费者（如果需要）
+                            if (node.has("conversation_id") && chunkConsumer != null) {
+                                // 我们包装一个特殊的 metadata 事件或者直接让 consumer 处理 node
+                            }
+
                             if (chunkConsumer != null) {
                                 chunkConsumer.accept(node);
                             }

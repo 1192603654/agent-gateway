@@ -7,6 +7,7 @@ import com.agent.gateway.core.CollaborationManager;
 import com.agent.gateway.server.entity.AgentConfig;
 import com.agent.gateway.server.entity.SystemConfig;
 import com.agent.gateway.server.repository.AgentConfigRepository;
+import com.agent.gateway.server.repository.ChatSessionRepository;
 import com.agent.gateway.server.repository.SystemConfigRepository;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.dashscope.QwenChatModel;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 public class GatewayService {
     private final AgentConfigRepository repository;
     private final SystemConfigRepository systemConfigRepository;
+    private final ChatSessionRepository chatSessionRepository;
 
     private ChatLanguageModel getModel() {
         SystemConfig config = systemConfigRepository.findById("ORCHESTRATOR_MODEL").orElse(null);
@@ -77,6 +79,22 @@ public class GatewayService {
 
     public void processStream(String query, Map<String, Object> params, CollaborationListener listener) {
         ChatLanguageModel model = getModel();
+
+        // 处理会话逻辑
+        String sessionId = (String) params.get("sessionId");
+        com.agent.gateway.server.entity.ChatSession session;
+        if (sessionId != null && !sessionId.isEmpty()) {
+            session = chatSessionRepository.findById(sessionId).orElse(new com.agent.gateway.server.entity.ChatSession());
+            if (session.getSessionId() == null) session.setSessionId(sessionId);
+        } else {
+            session = new com.agent.gateway.server.entity.ChatSession();
+            session.setSessionId(java.util.UUID.randomUUID().toString());
+        }
+
+        // 构造网关上下文参数
+        params.put("history_context", session.getHistoryContext());
+        params.put("agent_conversation_ids", session.getAgentConversationIds());
+
         List<AgentConfig> configs = repository.findAll();
         List<AgentExecutor> executors = configs.stream()
                 .map(c -> {
@@ -90,7 +108,39 @@ public class GatewayService {
                 .agents(executors)
                 .build();
 
-        collaborationManager.collaborate(query, params, listener);
+        collaborationManager.collaborate(query, params, new CollaborationListener() {
+            @Override
+            public void onStepStart(String agentName, int step) { listener.onStepStart(agentName, step); }
+
+            @Override
+            public void onStepChunk(String agentName, Object data) { listener.onStepChunk(agentName, data); }
+
+            @Override
+            public void onStepComplete(String agentName, String result) {
+                listener.onStepComplete(agentName, result);
+                session.setHistoryContext(session.getHistoryContext() + "Agent (" + agentName + "): " + result + "\n");
+            }
+
+            @Override
+            public void onComplete(String finalResult) {
+                session.setHistoryContext(session.getHistoryContext() + "User: " + query + "\nOrchestrator: " + finalResult + "\n");
+                chatSessionRepository.save(session);
+                listener.onMetadata("sessionId", session.getSessionId());
+                listener.onComplete(finalResult);
+            }
+
+            @Override
+            public void onMetadata(String key, Object value) {
+                if (key.startsWith("agent_conversation_id:")) {
+                    String agentName = key.substring(22);
+                    session.getAgentConversationIds().put(agentName, (String) value);
+                }
+                listener.onMetadata(key, value);
+            }
+
+            @Override
+            public void onError(String message) { listener.onError(message); }
+        });
     }
 
     public String process(String query) {
