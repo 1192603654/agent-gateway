@@ -65,6 +65,11 @@ public class GatewayController {
                     }
 
                     @Override
+                    public void onMetadata(String key, Object value) {
+                        sendEvent(emitter, "metadata", Map.of("key", key, "value", value));
+                    }
+
+                    @Override
                     public void onError(String message) {
                         sendEvent(emitter, "error", Map.of("message", message));
                         emitter.complete();

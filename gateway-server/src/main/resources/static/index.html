@@ -220,6 +220,7 @@
 
     <script>
         let currentAgents = [];
+        let currentSessionId = localStorage.getItem('gateway_session_id') || null;
 
         async function loadAgents() {
             try {
@@ -340,7 +341,10 @@
                 const response = await fetch('/api/gateway/query', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: query })
+                    body: JSON.stringify({
+                        query: query,
+                        sessionId: currentSessionId
+                    })
                 });
 
                 const reader = response.body.getReader();
@@ -406,6 +410,12 @@
                                     div.className = 'mt-4 mb-2 p-4 bg-blue-50 rounded-xl border border-blue-100 text-slate-800 font-medium shadow-sm';
                                     div.innerHTML = `<div class="text-xs text-blue-400 font-bold uppercase mb-1">网关最终回答</div>${data.result}`;
                                     resultContent.appendChild(div);
+                                } else if (currentEvent === 'metadata') {
+                                    if (data.key === 'sessionId') {
+                                        currentSessionId = data.value;
+                                        localStorage.setItem('gateway_session_id', currentSessionId);
+                                        console.log("Session ID updated:", currentSessionId);
+                                    }
                                 } else if (currentEvent === 'error') {
                                     const div = document.createElement('div');
                                     div.className = 'mb-2 p-2 bg-red-50 text-red-700 rounded border border-red-100';

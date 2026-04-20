@@ -21,11 +21,19 @@ public class CollaborationManager {
     /**
      * 开始协作流程
      * @param userInput 用户原始输入
-     * @param params 初始参数
+     * @param params 初始参数，包括 history (List<Map<String, String>>) 和 各智能体的 conversation_ids
      * @param listener 协作过程监听器，用于处理流式输出和进度回调
      */
     public void collaborate(String userInput, Map<String, Object> params, CollaborationListener listener) {
-        StringBuilder conversationHistory = new StringBuilder("User: ").append(userInput).append("\n");
+        StringBuilder conversationHistory = new StringBuilder();
+
+        // 1. 载入历史记录
+        Object historyObj = params.get("history_context");
+        if (historyObj instanceof String h) {
+            conversationHistory.append(h);
+        }
+        conversationHistory.append("User: ").append(userInput).append("\n");
+
         String currentResult = "";
         List<String> executedAgents = new ArrayList<>();
 
@@ -69,6 +77,12 @@ public class CollaborationManager {
                 execParams.putAll(aiParams);
                 execParams.put("history", conversationHistory.toString());
 
+                // 注入各智能体自己的 conversation_id
+                Map<String, String> conversationIds = (Map<String, String>) params.get("agent_conversation_ids");
+                if (conversationIds != null && conversationIds.containsKey(agentName)) {
+                    execParams.put("conversation_id", conversationIds.get(agentName));
+                }
+
                 StringBuilder stepResult = new StringBuilder();
                 String finalNextAction = agentName;
 
@@ -80,6 +94,10 @@ public class CollaborationManager {
                         // 特殊处理 Dify 等返回的 JSON 结构，提取文本回答
                         if ("message".equals(node.path("event").asText())) {
                             stepResult.append(node.path("answer").asText());
+                        }
+                        // 提取并传递会话 ID
+                        if (node.has("conversation_id") && !node.path("conversation_id").asText().isEmpty()) {
+                            if (listener != null) listener.onMetadata("agent_conversation_id:" + agentName, node.path("conversation_id").asText());
                         }
                     }
                     if (listener != null) listener.onStepChunk(finalNextAction, data);
